@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Navigation Pattern System: Reference Demo (Lo-Fi)</title>
+<style>
+  :root {
+    --accent: #5463FF;
+    --accent-light: #DFE6FF;
+    --ink: #1E1E1E;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --bg-sidebar: #FAFAFA;
+    --bg-app: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #fff;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .appbar {
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+  }
+  .appbar .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:16px; }
+  .appbar .logo .dot { width:22px; height:22px; border-radius:6px; background:var(--accent); }
+  .appbar .right { color:var(--muted); font-size:13px; }
+
+  .layout { display:flex; height: calc(100vh - 64px); }
+
+  .sidebar {
+    width: 260px;
+    flex-shrink: 0;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    transition: width .15s ease;
+    padding: 16px 0;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 20px;
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: #F0F1FF; }
+  .nav-item.active { background: var(--accent-light); border-left-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .nav-item .chev { color: var(--muted); font-size: 11px; transition: transform .12s; }
+  .nav-item .chev.open { transform: rotate(180deg); }
+  .accordion-child { padding: 8px 20px 8px 40px; font-size: 13.5px; color: var(--ink); cursor:pointer; }
+  .accordion-child:hover { background:#F0F1FF; }
+  .accordion-child.active { color: var(--accent); font-weight:600; background: var(--accent-light); }
+
+  .nav-divider { height:1px; background:var(--border); margin:12px 20px; }
+  .group-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 20px 6px; font-weight: 700; }
+  .group-label:first-child { padding-top: 4px; }
+
+  .back-control { display:flex; align-items:center; gap:8px; padding: 4px 20px 16px; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .back-control:hover { text-decoration: underline; }
+
+  .content-col { flex:1; display:flex; flex-direction:column; min-width:0; }
+
+  .flow-subbar { display:none; align-items:center; gap:8px; height: 52px; padding: 0 32px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--ink); background: #fff; flex-shrink: 0; }
+  .flow-subbar .crumb { cursor:pointer; color: var(--accent); }
+  .flow-subbar .crumb:hover { text-decoration:underline; }
+  .flow-subbar .crumb-current { color: var(--ink); cursor:default; }
+  .flow-subbar .crumb-sep { color: var(--muted); }
+  .flow-subbar .back-label { cursor:pointer; }
+  .flow-subbar .back-label:hover { color: var(--accent); }
+  .flow-subbar .exit-control { cursor:pointer; font-size: 22px; line-height:1; padding: 4px 6px; color: var(--muted); }
+  .flow-subbar .exit-control:hover { color: var(--accent); }
+
+  .content-scroll { flex:1; overflow-y:auto; padding: 40px 48px; max-width: 760px; }
+
+  .pattern-tag { display:inline-block; background: var(--accent-light); color: var(--accent); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:4px 10px; border-radius:20px; margin-bottom:16px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 28px; }
+  .field-desc { color: var(--muted); font-size: 13px; margin: 0 0 14px; }
+
+  .card { border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px; cursor:pointer; }
+  .card:hover { border-color: var(--accent); }
+  .card .title { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .card .desc { font-size:13px; color:var(--muted); }
+
+  .row { display:flex; align-items:center; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border); cursor:pointer; }
+  .row:hover .label { color: var(--accent); }
+  .row .value { font-size:13px; color:var(--muted); }
+
+  .btn { display:inline-block; padding:9px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+  .btn-primary { background: var(--accent); color:#fff; }
+  .btn-link { color: var(--accent); font-weight:600; cursor:pointer; background:none; border:none; padding:0; font-size:14px; }
+
+  .step-indicator { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+  .step-dots { display:flex; gap:6px; }
+  .step-dot { width:24px; height:4px; border-radius:2px; background:var(--border); }
+  .step-dot.done { background: var(--accent); }
+  .step-label { font-size:12px; color:var(--muted); }
+</style>
+</head>
+<body class="state-main">
+
+  <div class="appbar">
+    <div class="logo"><div class="dot"></div> Pattern Demo</div>
+    <div class="right">Navigation Pattern System, reference only, dummy content</div>
+  </div>
+
+  <div class="layout">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="content-col">
+      <div class="flow-subbar" id="flowSubbar"></div>
+      <div class="content-scroll" id="content"></div>
+    </div>
+  </div>
+
+<script>
+/* ================= Dummy data model ================= */
+const MAIN_ITEMS = [
+  { id:'section-a', label:'Section A (Plain Main-State Link)', type:'link' },
+  { id:'section-b', label:'Section B (Accordion)', type:'accordion', children:[
+      { id:'b1', label:'Section B1' },
+      { id:'b2', label:'Section B2' },
+      { id:'b3', label:'Section B3' },
+  ]},
+  { id:'section-c', label:'Section C (Contextual Sidebar)', type:'contextual' },
+];
+
+const CONTEXTUAL_GROUPS = [
+  { name:'Group 1', items:[
+    { id:'item-11', label:'Item 1.1' },
+    { id:'item-12', label:'Item 1.2' },
+  ]},
+  { name:'Group 2', items:[
+    { id:'item-21', label:'Item 2.1' },
+    { id:'item-22', label:'Item 2.2' },
+  ]},
+];
+
+/* ================= State ================= */
+let state = {
+  view: 'main',            // 'main' | 'contextual' | 'flow'
+  openAccordion: null,      // which main accordion is expanded
+  mainLeaf: null,           // which plain-link leaf is showing (section-a / b1 / b2 / b3 / section-d)
+  activeItem: null,         // active contextual item id
+  path: [],                 // drill-down path within the active contextual item, e.g. ['cardA'] or ['cardA','deep']
+  flow: null,               // { fromView, fromItem, fromPath, step }
+};
+
+/* ================= Navigation actions ================= */
+function goMain(leaf){
+  state = { view:'main', openAccordion: state.openAccordion, mainLeaf: leaf || null, activeItem:null, path:[], flow:null };
+  render();
+}
+function toggleAccordion(id){
+  state.openAccordion = state.openAccordion === id ? null : id;
+  state.mainLeaf = null;
+  render();
+}
+function goContextual(itemId){
+  state = { view:'contextual', openAccordion:null, mainLeaf:null, activeItem: itemId || CONTEXTUAL_GROUPS[0].items[0].id, path: [], flow:null };
+  render();
+}
+function selectContextualItem(id){
+  state.activeItem = id;
+  state.path = [];
+  render();
+}
+function pushPath(segment){ state.path.push(segment); render(); }
+function popPathTo(index){ state.path = state.path.slice(0, index + 1); render(); } // index=-1 clears to root (slice(0,0) = [])
+
+function startFlow(fromLabel){
+  state.flow = { fromView: state.view, fromItem: state.activeItem, fromPath: [...state.path], step: 1, fromLabel };
+  state.view = 'flow';
+  render();
+}
+function exitFlow(){
+  const f = state.flow;
+  if (!f) { goMain(); return; }
+  state.view = f.fromView;
+  state.activeItem = f.fromItem;
+  state.path = f.fromPath;
+  state.flow = null;
+  render();
+}
+function flowNext(){ state.flow.step++; render(); }
+function flowBack(){
+  if (state.flow.step <= 1) { exitFlow(); return; }
+  state.flow.step--; render();
+}
+function stepProgress(step, total){
+  let dots = '';
+  for (let i=1;i<=total;i++) dots += `<div class="step-dot ${i<=step?'done':''}"></div>`;
+  return `<div class="step-indicator"><div class="step-dots">${dots}</div><span class="step-label">Step ${step} of ${total}</span></div>`;
+}
+function tag(text){ return `<div class="pattern-tag">${text}</div>`; }
+
+/* ================= Sidebar rendering ================= */
+function renderSidebar(){
+  const sb = document.getElementById('sidebar');
+  sb.style.display = '';
+
+  if (state.view === 'flow') {
+    // Full-Page Flow is a full takeover, so there's no persistent nav chrome while a task is in progress.
+    sb.style.display = 'none';
+    return;
+  }
+
+  if (state.view === 'main') {
+    sb.className = 'sidebar';
+    let html = '';
+    MAIN_ITEMS.forEach(it => {
+      if (it.type === 'accordion') {
+        const isOpen = state.openAccordion === it.id;
+        html += `<div class="nav-item" onclick="toggleAccordion('${it.id}')">${it.label}<span class="chev ${isOpen?'open':''}">&#9662;</span></div>`;
+        if (isOpen) {
+          it.children.forEach(c => {
+            const activeCls = state.mainLeaf === c.id ? 'active' : '';
+            html += `<div class="accordion-child ${activeCls}" onclick="event.stopPropagation(); goMain('${c.id}')">${c.label}</div>`;
+          });
+        }
+      } else if (it.type === 'contextual') {
+        html += `<div class="nav-item" onclick="goContextual()">${it.label}</div>`;
+      } else {
+        const activeCls = state.mainLeaf === it.id ? 'active' : '';
+        html += `<div class="nav-item ${activeCls}" onclick="goMain('${it.id}')">${it.label}</div>`;
+      }
+    });
+    sb.innerHTML = html;
+    return;
+  }
+
+  // contextual
+  sb.className = 'sidebar';
+  let html = `<div class="back-control" onclick="goMain()">&larr; Volver a la app</div>`;
+  CONTEXTUAL_GROUPS.forEach(g => {
+    html += `<div class="group-label">${g.name}</div>`;
+    g.items.forEach(it => {
+      const activeCls = it.id === state.activeItem ? 'active' : '';
+      html += `<div class="nav-item ${activeCls}" onclick="selectContextualItem('${it.id}')">${it.label}</div>`;
+    });
+  });
+  sb.innerHTML = html;
+}
+/* ================= Content + subbar rendering ================= */
+function render(){
+  renderSidebar();
+  const content = document.getElementById('content');
+  const subbar = document.getElementById('flowSubbar');
+
+  if (state.view === 'flow') {
+    subbar.style.display = 'flex';
+    subbar.style.justifyContent = 'flex-end';
+    subbar.innerHTML = `<span class="exit-control" onclick="exitFlow()">&times;</span>`;
+    content.innerHTML = renderFlow();
+    content.scrollTop = 0;
+    return;
+  }
+
+  if (state.view === 'main') {
+    if (state.mainLeaf === 'b1' && state.path.length > 0) {
+      renderPathSubbar(subbar, 'Section B1', { subA:'Sub Section', subDeep:'Deeper Sub Item' });
+    } else {
+      subbar.style.display = 'none';
+    }
+    content.innerHTML = renderMainLeaf();
+    content.scrollTop = 0;
+    return;
+  }
+
+  // contextual
+  if (state.activeItem === 'item-21' && state.path.length > 0) {
+    renderPathSubbar(subbar, 'Item 2.1', { cardA:'Card A', deep:'Deeper Item' });
+  } else {
+    subbar.style.display = 'none';
+  }
+  content.innerHTML = renderContextualItem();
+  content.scrollTop = 0;
+}
+
+// This path header (back-label at 1 ancestor, breadcrumb at 2+) is a content-area rule.
+// It isn't specific to the Contextual Sidebar: it applies to any leaf's content, whether
+// that leaf sits under a Contextual Sidebar (Item 2.1) or a Main-state Accordion (Section B1).
+function renderPathSubbar(subbar, rootLabel, labels){
+  const path = [{ label: rootLabel, idx:-1 }, ...state.path.map((seg, i) => ({ label: labels[seg], idx: i }))];
+  subbar.style.display = 'flex';
+  subbar.style.justifyContent = 'flex-start';
+  const ancestors = path.length - 1;
+  if (ancestors === 1) {
+    subbar.innerHTML = `<span class="back-label" onclick="popPathTo(-1)">&larr; Volver a ${rootLabel}</span>`;
+  } else {
+    subbar.innerHTML = path.map((c, i) => {
+      const sep = i > 0 ? '<span class="crumb-sep">/</span>' : '';
+      const isLast = i === path.length - 1;
+      if (isLast) return sep + `<span class="crumb-current">${c.label}</span>`;
+      return sep + `<span class="crumb" onclick="popPathTo(${c.idx})">${c.label}</span>`;
+    }).join('');
+  }
+}
+
+/* ---- Main state leaf content ---- */
+function renderMainLeaf(){
+  if (!state.mainLeaf) {
+    return `${tag('Main Sidebar')}<h1>Main view</h1><p class="subtitle">This is the default state, showing the top-level product sections. Click "Section B" to see an Accordion, or "Section C" to enter a Contextual Sidebar.</p>`;
+  }
+  if (state.mainLeaf === 'b1') {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag('2 ancestors: breadcrumb (Accordion child)')}
+        <h1>Deeper Sub Item</h1>
+        <p class="subtitle">Two layers deep from an Accordion child in Main state. It follows the same rule as Item 2.1 in the Contextual Sidebar, because the path header doesn't care which pattern the entry point came from, only how deep the content itself goes.</p>
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag('1 ancestor: back-label (Accordion child)')}
+        <h1>Sub Section</h1>
+        <p class="subtitle">One layer deep from Section B1. It's still just a back-label, the same mechanical rule as any other leaf, regardless of entry pattern.</p>
+        <div class="row" onclick="pushPath('subDeep')"><div class="label">Go one layer deeper &rsaquo;</div></div>
+      `;
+    }
+    return `
+      ${tag('Accordion child (Main state), root')}
+      <h1>Section B1</h1>
+      <p class="subtitle">A flat child revealed by the Accordion, still Main state. Unlike Section B2 and B3, this one has its own further depth, to show that the back-vs-breadcrumb rule isn't specific to the Contextual Sidebar.</p>
+      <div class="card" onclick="pushPath('subA')"><div class="title">Sub Section</div><div class="desc">Drills two layers deep, following the same back-label to breadcrumb progression as Item 2.1.</div></div>
+    `;
+  }
+
+  const labels = { 'section-a':'Section A (Plain Main-State Link)', b2:'Section B2', b3:'Section B3' };
+  const isAccordionChild = ['b2','b3'].includes(state.mainLeaf);
+  return `
+    ${tag(isAccordionChild ? 'Accordion child (Main state)' : 'Plain Main-state link')}
+    <h1>${labels[state.mainLeaf]}</h1>
+    <p class="subtitle">${isAccordionChild
+      ? 'A flat child revealed by the Accordion, still Main state, with the sidebar unchanged otherwise.'
+      : 'A simple page with no children, so no Accordion and no Contextual takeover are needed.'}</p>
+  `;
+}
+
+/* ---- Contextual item content ---- */
+function renderContextualItem(){
+  if (state.activeItem === 'item-11') {
+    return `
+      ${tag('Contextual layer, flat item')}
+      <h1>Item 1.1</h1>
+      <p class="subtitle">A plain browsing page inside the Contextual Sidebar. It also contains an action that starts a task flow.</p>
+      <button class="btn btn-primary" onclick="startFlow('Item 1.1')">Start task flow</button>
+    `;
+  }
+  if (state.activeItem === 'item-12') {
+    return `${tag('Contextual layer, flat item')}<h1>Item 1.2</h1><p class="subtitle">Another plain browsing page. No further nesting.</p>`;
+  }
+  if (state.activeItem === 'item-22') {
+    return `${tag('Contextual layer, flat item')}<h1>Item 2.2</h1><p class="subtitle">A plain browsing page alongside Item 2.1's drill-down.</p>`;
+  }
+  if (state.activeItem === 'item-21') {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag('2 ancestors: breadcrumb (Contextual Sidebar item)')}
+        <h1>Deeper Item</h1>
+        <p class="subtitle">Two layers deep from Item 2.1. The header now shows a full breadcrumb, because there's finally an intermediate layer worth skipping directly to.</p>
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag('1 ancestor: back-label (Contextual Sidebar item)')}
+        <h1>Card A</h1>
+        <p class="subtitle">One layer deep from Item 2.1. The header renders as a plain back-label, a length-1 path shown at its simplest.</p>
+        <div class="row" onclick="pushPath('deep')"><div class="label">Go one layer deeper &rsaquo;</div></div>
+      `;
+    }
+    return `
+      ${tag('Root level (no subbar)')}
+      <h1>Item 2.1</h1>
+      <p class="subtitle">The Contextual Sidebar already shows this is selected, so no header control is needed yet. Click a card to start a navigational drill-down.</p>
+      <div class="card" onclick="pushPath('cardA')"><div class="title">Card A</div><div class="desc">Drills two layers deep, demonstrating back-label first, then breadcrumb.</div></div>
+      <div class="card"><div class="title">Card B</div><div class="desc">A sibling destination that isn't wired up in this demo.</div></div>
+    `;
+  }
+  return '';
+}
+
+/* ---- Full-Page Flow content ---- */
+function renderFlow(){
+  const step = state.flow.step;
+  const total = 3;
+  const nav = () => `
+    <div style="margin-top:24px">
+      <button class="btn-link" onclick="flowBack()">${step===1?'Cancelar':'Atrás'}</button>
+      <button class="btn btn-primary" style="margin-left:12px" onclick="flowNext()">Continuar</button>
+    </div>`;
+
+  if (step === 1) {
+    return `${tag('Full-Page Flow, step 1 of 3')}${stepProgress(step,total)}<h1>Task flow, step 1</h1><p class="subtitle">Launched from "${state.flow.fromLabel}". There's no sidebar navigation while this is open, since attention narrows to the task.</p>${nav()}`;
+  }
+  if (step === 2) {
+    return `${tag('Full-Page Flow, step 2 of 3')}${stepProgress(step,total)}<h1>Task flow, step 2</h1><p class="subtitle">"Back" here means "previous step," not a navigational layer, since this flow tracks no path at all.</p>${nav()}`;
+  }
+  return `
+    ${tag('Full-Page Flow, complete')}
+    <h1>Done</h1>
+    <p class="subtitle">Finishing returns to exactly where the flow was launched from, "${state.flow.fromLabel}", not to Main.</p>
+    <button class="btn btn-primary" onclick="exitFlow()">Finish</button>
+  `;
+}
+
+/* ================= Init ================= */
+render();
+</script>
+</body>
+</html>
