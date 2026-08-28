@@ -1454,6 +1454,7 @@ function setMode(mode){
   document.getElementById('wrap-' + mode).classList.add('active');
   document.querySelectorAll('.seg-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.mode === mode));
   positionThumb();
+  reportHeight();
 }
 function positionThumb(){
   const active = document.querySelector('.seg-btn.active');
@@ -1461,8 +1462,19 @@ function positionThumb(){
   thumb.style.left = active.offsetLeft + 'px';
   thumb.style.width = active.offsetWidth + 'px';
 }
-window.addEventListener('load', positionThumb);
-window.addEventListener('resize', positionThumb);
+// Only the active device-wrap contributes to layout height (inactive ones are
+// display:none), so this always reflects just the current mode. Lets an
+// embedding page (like the artifact) size its iframe to match instead of
+// reserving space for whichever mode happens to be tallest.
+function reportHeight(){
+  if (window.parent === window) return;
+  // body.scrollHeight, not documentElement.scrollHeight — the latter can stay
+  // stuck at a previous, taller mode's value even after the shorter mode's
+  // content is the only thing displayed.
+  window.parent.postMessage({ type: 'nav-demo-resize', height: document.body.scrollHeight }, '*');
+}
+window.addEventListener('load', () => { positionThumb(); reportHeight(); });
+window.addEventListener('resize', () => { positionThumb(); reportHeight(); });
 </script>
 </body>
 </html>

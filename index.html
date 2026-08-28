@@ -60,7 +60,7 @@
   .embed-caption a:hover { text-decoration: underline; }
 
   .proto-frame-outer { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .proto-frame-outer iframe { display:block; width: 100%; height: 1180px; border: none; }
+  .proto-frame-outer iframe { display:block; width: 100%; height: 820px; border: none; transition: height .15s ease; }
   .proto-note { font-size: 13px; color: var(--muted); margin-top: 12px; }
 
   footer { color: var(--muted); font-size: 13px; padding-top: 32px; border-top: 1px solid var(--border); }
@@ -190,7 +190,7 @@
     <h2>Interactive prototype</h2>
     <p class="section-intro">Dummy content throughout: the point is to feel how navigation moves between layers and back, not the content itself. Click through Main sidebar, Accordion, Contextual Sidebar, navigational drill-down (back-label, then breadcrumb), and Full-Page Flow. The drill-down is demonstrated twice, once from a Contextual Sidebar item (Item 2.1) and once from an Accordion child (Section B1), to show the same path-header rule applies to both. Use the Desktop/Tablet/Mobile switcher above the prototype to see how the same rules hold at each breakpoint, including the hamburger-triggered drawer at narrower widths.</p>
     <div class="proto-frame-outer">
-      <iframe srcdoc="&lt;!DOCTYPE html&gt;
+      <iframe id="protoFrame" srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;en&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
@@ -1646,6 +1646,7 @@ function setMode(mode){
   document.getElementById(&#x27;wrap-&#x27; + mode).classList.add(&#x27;active&#x27;);
   document.querySelectorAll(&#x27;.seg-btn&#x27;).forEach(btn =&gt; btn.classList.toggle(&#x27;active&#x27;, btn.dataset.mode === mode));
   positionThumb();
+  reportHeight();
 }
 function positionThumb(){
   const active = document.querySelector(&#x27;.seg-btn.active&#x27;);
@@ -1653,8 +1654,19 @@ function positionThumb(){
   thumb.style.left = active.offsetLeft + &#x27;px&#x27;;
   thumb.style.width = active.offsetWidth + &#x27;px&#x27;;
 }
-window.addEventListener(&#x27;load&#x27;, positionThumb);
-window.addEventListener(&#x27;resize&#x27;, positionThumb);
+// Only the active device-wrap contributes to layout height (inactive ones are
+// display:none), so this always reflects just the current mode. Lets an
+// embedding page (like the artifact) size its iframe to match instead of
+// reserving space for whichever mode happens to be tallest.
+function reportHeight(){
+  if (window.parent === window) return;
+  // body.scrollHeight, not documentElement.scrollHeight — the latter can stay
+  // stuck at a previous, taller mode&#x27;s value even after the shorter mode&#x27;s
+  // content is the only thing displayed.
+  window.parent.postMessage({ type: &#x27;nav-demo-resize&#x27;, height: document.body.scrollHeight }, &#x27;*&#x27;);
+}
+window.addEventListener(&#x27;load&#x27;, () =&gt; { positionThumb(); reportHeight(); });
+window.addEventListener(&#x27;resize&#x27;, () =&gt; { positionThumb(); reportHeight(); });
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
@@ -1666,5 +1678,16 @@ window.addEventListener(&#x27;resize&#x27;, positionThumb);
   <footer>Navigation Pattern System for Bitso Business, Settings pilot</footer>
 
 </div>
+<script>
+  // The embedded prototype reports its own height (it varies a lot between
+  // Desktop/Tablet/Mobile modes), so size the iframe to match instead of
+  // reserving space for whichever mode happens to be tallest.
+  window.addEventListener('message', (e) => {
+    if (e.data && e.data.type === 'nav-demo-resize') {
+      const frame = document.getElementById('protoFrame');
+      if (e.source === frame.contentWindow) frame.style.height = e.data.height + 'px';
+    }
+  });
+</script>
 </body>
 </html>
