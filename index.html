@@ -60,7 +60,7 @@
   .embed-caption a:hover { text-decoration: underline; }
 
   .proto-frame-outer { border: 1px solid var(--border); border-radius: 14px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .proto-frame-outer iframe { display:block; width: 100%; height: 640px; border: none; }
+  .proto-frame-outer iframe { display:block; width: 100%; height: 1180px; border: none; }
   .proto-note { font-size: 13px; color: var(--muted); margin-top: 12px; }
 
   footer { color: var(--muted); font-size: 13px; padding-top: 32px; border-top: 1px solid var(--border); }
@@ -108,6 +108,9 @@
       </ul>
       <div class="rationale"><strong>Rationale</strong>Moving in and out of Contextual state always uses Back, never an X (see Interaction patterns below for why).</div>
 
+      <h3 style="margin-top:28px">Responsive presentation</h3>
+      <p>The rules above don't change by breakpoint, but the sidebar's presentation does. On breakpoints where it can't stay persistently visible (tablet, mobile), it's accessed through a hamburger-triggered overlay drawer instead of a fixed column: tapping the icon opens it over the content, and picking a real destination closes it automatically. Reopening the drawer always shows the current selection still highlighted, which is what lets the Back-vs-Breadcrumb rule work completely unchanged here. It's the same orientation a persistent desktop sidebar gives for free, just one tap away instead of always on screen.</p>
+
       <h3 style="margin-top:28px">How a new nav item becomes a plain link, an Accordion, or a Contextual Sidebar</h3>
       <p>This is the same decision the FigJam decision tree below walks through visually. In words, it goes in two steps:</p>
       <ol style="font-size:14.5px; padding-left:20px; margin:0 0 14px;">
@@ -143,6 +146,8 @@
       </ul>
 
       <div class="rationale"><strong>Why the sidebar disappears entirely instead of collapsing to an icon rail</strong>Full-Page Flow is defined by the idea that attention narrows to the task. A persistent nav rail works against that even if it's non-interactive, because it's still a visible invitation to think about other parts of the product. It's worse if the rail isn't clickable, since then it's a false affordance: it looks navigable, does nothing, and erodes trust in the UI. The ×-to-exit control already does the sidebar's job for as long as the flow is open, so a second, inert reminder of the nav structure is just redundant. A collapsed rail is also a third, undefined state sitting between "full sidebar" and "full takeover," and removing it keeps the two-pattern system unambiguous.</div>
+
+      <div class="rationale"><strong>"No persistent sidebar" means the sidebar's content, not its entry point</strong>On tablet and mobile, where the sidebar is normally reached through a hamburger icon rather than a persistent column, that icon stays visible and tappable even during a Full-Page Flow. This isn't an exception to "no persistent sidebar": the sidebar itself is still never shown by default, exactly like everywhere else. Desktop simply has no equivalent icon to hide in the first place, since its sidebar has no toggle at all. Opening the drawer mid-flow and picking a real destination discards the flow immediately, the same as tapping the X, not a second, competing way to exit.</div>
     </div>
 
     <div class="pattern-block">
@@ -183,14 +188,108 @@
 
   <section id="prototype">
     <h2>Interactive prototype</h2>
-    <p class="section-intro">Dummy content throughout: the point is to feel how navigation moves between layers and back, not the content itself. Click through Main sidebar, Accordion, Contextual Sidebar, navigational drill-down (back-label, then breadcrumb), and Full-Page Flow. The drill-down is demonstrated twice, once from a Contextual Sidebar item (Item 2.1) and once from an Accordion child (Section B1), to show the same path-header rule applies to both.</p>
+    <p class="section-intro">Dummy content throughout: the point is to feel how navigation moves between layers and back, not the content itself. Click through Main sidebar, Accordion, Contextual Sidebar, navigational drill-down (back-label, then breadcrumb), and Full-Page Flow. The drill-down is demonstrated twice, once from a Contextual Sidebar item (Item 2.1) and once from an Accordion child (Section B1), to show the same path-header rule applies to both. Use the Desktop/Tablet/Mobile switcher above the prototype to see how the same rules hold at each breakpoint, including the hamburger-triggered drawer at narrower widths.</p>
     <div class="proto-frame-outer">
       <iframe srcdoc="&lt;!DOCTYPE html&gt;
 &lt;html lang=&quot;en&quot;&gt;
 &lt;head&gt;
 &lt;meta charset=&quot;UTF-8&quot;&gt;
+&lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
 &lt;title&gt;Navigation Pattern System: Reference Demo (Lo-Fi)&lt;/title&gt;
 &lt;style&gt;
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif;
+    background: #E7E7EA;
+    padding: 20px 20px 40px;
+  }
+
+  /* iOS-style segmented control: rounded track, sliding white thumb behind
+     the active label, muted gray inactive text, dark active text. */
+  .switcher-row { display:flex; justify-content:center; margin-bottom: 20px; }
+  .segmented {
+    position: relative;
+    display: inline-flex;
+    background: #E3E3E8;
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .segmented-thumb {
+    position: absolute;
+    top: 2px;
+    bottom: 2px;
+    left: 2px;
+    width: 96px;
+    background: #FFFFFF;
+    border-radius: 7px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.18), 0 0 1px rgba(0,0,0,0.08);
+    transition: left .22s cubic-bezier(.2,.8,.2,1), width .22s cubic-bezier(.2,.8,.2,1);
+    z-index: 1;
+  }
+  .seg-btn {
+    position: relative;
+    z-index: 2;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 7px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #6B7280;
+    border-radius: 7px;
+    transition: color .15s;
+    font-family: inherit;
+  }
+  .seg-btn.active { color: #1E1E1E; }
+
+  .stage { display:flex; justify-content:center; }
+
+  .device-wrap { display:none; }
+  .device-wrap.active { display:block; }
+
+  .device-wrap.desktop-wrap {
+    width: 100%;
+    max-width: 1100px;
+    height: 700px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.16);
+    background: #fff;
+  }
+  .device-wrap.desktop-wrap iframe { width:100%; height:100%; border:none; display:block; }
+
+  .device-wrap.tablet-wrap, .device-wrap.mobile-wrap {
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+    background: #fff;
+  }
+  .device-wrap.tablet-wrap { width: 768px; height: 1024px; }
+  .device-wrap.mobile-wrap { width: 375px; height: 812px; }
+  .device-wrap.tablet-wrap iframe, .device-wrap.mobile-wrap iframe { width:100%; height:100%; border:none; display:block; }
+&lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+  &lt;div class=&quot;switcher-row&quot;&gt;
+    &lt;div class=&quot;segmented&quot; id=&quot;segmented&quot;&gt;
+      &lt;div class=&quot;segmented-thumb&quot; id=&quot;segThumb&quot;&gt;&lt;/div&gt;
+      &lt;button class=&quot;seg-btn active&quot; data-mode=&quot;desktop&quot; onclick=&quot;setMode(&#x27;desktop&#x27;)&quot;&gt;Desktop&lt;/button&gt;
+      &lt;button class=&quot;seg-btn&quot; data-mode=&quot;tablet&quot; onclick=&quot;setMode(&#x27;tablet&#x27;)&quot;&gt;Tablet&lt;/button&gt;
+      &lt;button class=&quot;seg-btn&quot; data-mode=&quot;mobile&quot; onclick=&quot;setMode(&#x27;mobile&#x27;)&quot;&gt;Mobile&lt;/button&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+  &lt;div class=&quot;stage&quot;&gt;
+    &lt;div class=&quot;device-wrap desktop-wrap active&quot; id=&quot;wrap-desktop&quot;&gt;
+      &lt;iframe srcdoc=&quot;&amp;lt;!DOCTYPE html&amp;gt;
+&amp;lt;html lang=&amp;quot;en&amp;quot;&amp;gt;
+&amp;lt;head&amp;gt;
+&amp;lt;meta charset=&amp;quot;UTF-8&amp;quot;&amp;gt;
+&amp;lt;title&amp;gt;Navigation Pattern System: Reference Demo (Lo-Fi)&amp;lt;/title&amp;gt;
+&amp;lt;style&amp;gt;
   :root {
     --accent: #5463FF;
     --accent-light: #DFE6FF;
@@ -203,7 +302,7 @@
   * { box-sizing: border-box; }
   body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, &amp;quot;Segoe UI&amp;quot;, Helvetica, Arial, sans-serif;
     color: var(--ink);
     background: #fff;
     height: 100vh;
@@ -296,59 +395,59 @@
   .step-dot { width:24px; height:4px; border-radius:2px; background:var(--border); }
   .step-dot.done { background: var(--accent); }
   .step-label { font-size:12px; color:var(--muted); }
-&lt;/style&gt;
-&lt;/head&gt;
-&lt;body class=&quot;state-main&quot;&gt;
+&amp;lt;/style&amp;gt;
+&amp;lt;/head&amp;gt;
+&amp;lt;body class=&amp;quot;state-main&amp;quot;&amp;gt;
 
-  &lt;div class=&quot;appbar&quot;&gt;
-    &lt;div class=&quot;logo&quot;&gt;&lt;div class=&quot;dot&quot;&gt;&lt;/div&gt; Pattern Demo&lt;/div&gt;
-    &lt;div class=&quot;right&quot;&gt;Navigation Pattern System, reference only, dummy content&lt;/div&gt;
-  &lt;/div&gt;
+  &amp;lt;div class=&amp;quot;appbar&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;logo&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;dot&amp;quot;&amp;gt;&amp;lt;/div&amp;gt; Pattern Demo&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;right&amp;quot;&amp;gt;Navigation Pattern System, reference only, dummy content&amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
 
-  &lt;div class=&quot;layout&quot;&gt;
-    &lt;div class=&quot;sidebar&quot; id=&quot;sidebar&quot;&gt;&lt;/div&gt;
-    &lt;div class=&quot;content-col&quot;&gt;
-      &lt;div class=&quot;flow-subbar&quot; id=&quot;flowSubbar&quot;&gt;&lt;/div&gt;
-      &lt;div class=&quot;content-scroll&quot; id=&quot;content&quot;&gt;&lt;/div&gt;
-    &lt;/div&gt;
-  &lt;/div&gt;
+  &amp;lt;div class=&amp;quot;layout&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;sidebar&amp;quot; id=&amp;quot;sidebar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;content-col&amp;quot;&amp;gt;
+      &amp;lt;div class=&amp;quot;flow-subbar&amp;quot; id=&amp;quot;flowSubbar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;content-scroll&amp;quot; id=&amp;quot;content&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
 
-&lt;script&gt;
+&amp;lt;script&amp;gt;
 /* ================= Dummy data model ================= */
 const MAIN_ITEMS = [
-  { id:&#x27;section-a&#x27;, label:&#x27;Section A (Plain Main-State Link)&#x27;, type:&#x27;link&#x27; },
-  { id:&#x27;section-b&#x27;, label:&#x27;Section B (Accordion)&#x27;, type:&#x27;accordion&#x27;, children:[
-      { id:&#x27;b1&#x27;, label:&#x27;Section B1&#x27; },
-      { id:&#x27;b2&#x27;, label:&#x27;Section B2&#x27; },
-      { id:&#x27;b3&#x27;, label:&#x27;Section B3&#x27; },
+  { id:&amp;#x27;section-a&amp;#x27;, label:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, type:&amp;#x27;link&amp;#x27; },
+  { id:&amp;#x27;section-b&amp;#x27;, label:&amp;#x27;Section B (Accordion)&amp;#x27;, type:&amp;#x27;accordion&amp;#x27;, children:[
+      { id:&amp;#x27;b1&amp;#x27;, label:&amp;#x27;Section B1&amp;#x27; },
+      { id:&amp;#x27;b2&amp;#x27;, label:&amp;#x27;Section B2&amp;#x27; },
+      { id:&amp;#x27;b3&amp;#x27;, label:&amp;#x27;Section B3&amp;#x27; },
   ]},
-  { id:&#x27;section-c&#x27;, label:&#x27;Section C (Contextual Sidebar)&#x27;, type:&#x27;contextual&#x27; },
+  { id:&amp;#x27;section-c&amp;#x27;, label:&amp;#x27;Section C (Contextual Sidebar)&amp;#x27;, type:&amp;#x27;contextual&amp;#x27; },
 ];
 
 const CONTEXTUAL_GROUPS = [
-  { name:&#x27;Group 1&#x27;, items:[
-    { id:&#x27;item-11&#x27;, label:&#x27;Item 1.1&#x27; },
-    { id:&#x27;item-12&#x27;, label:&#x27;Item 1.2&#x27; },
+  { name:&amp;#x27;Group 1&amp;#x27;, items:[
+    { id:&amp;#x27;item-11&amp;#x27;, label:&amp;#x27;Item 1.1&amp;#x27; },
+    { id:&amp;#x27;item-12&amp;#x27;, label:&amp;#x27;Item 1.2&amp;#x27; },
   ]},
-  { name:&#x27;Group 2&#x27;, items:[
-    { id:&#x27;item-21&#x27;, label:&#x27;Item 2.1&#x27; },
-    { id:&#x27;item-22&#x27;, label:&#x27;Item 2.2&#x27; },
+  { name:&amp;#x27;Group 2&amp;#x27;, items:[
+    { id:&amp;#x27;item-21&amp;#x27;, label:&amp;#x27;Item 2.1&amp;#x27; },
+    { id:&amp;#x27;item-22&amp;#x27;, label:&amp;#x27;Item 2.2&amp;#x27; },
   ]},
 ];
 
 /* ================= State ================= */
 let state = {
-  view: &#x27;main&#x27;,            // &#x27;main&#x27; | &#x27;contextual&#x27; | &#x27;flow&#x27;
+  view: &amp;#x27;main&amp;#x27;,            // &amp;#x27;main&amp;#x27; | &amp;#x27;contextual&amp;#x27; | &amp;#x27;flow&amp;#x27;
   openAccordion: null,      // which main accordion is expanded
   mainLeaf: null,           // which plain-link leaf is showing (section-a / b1 / b2 / b3 / section-d)
   activeItem: null,         // active contextual item id
-  path: [],                 // drill-down path within the active contextual item, e.g. [&#x27;cardA&#x27;] or [&#x27;cardA&#x27;,&#x27;deep&#x27;]
+  path: [],                 // drill-down path within the active contextual item, e.g. [&amp;#x27;cardA&amp;#x27;] or [&amp;#x27;cardA&amp;#x27;,&amp;#x27;deep&amp;#x27;]
   flow: null,               // { fromView, fromItem, fromPath, step }
 };
 
 /* ================= Navigation actions ================= */
 function goMain(leaf){
-  state = { view:&#x27;main&#x27;, openAccordion: state.openAccordion, mainLeaf: leaf || null, activeItem:null, path:[], flow:null };
+  state = { view:&amp;#x27;main&amp;#x27;, openAccordion: state.openAccordion, mainLeaf: leaf || null, activeItem:null, path:[], flow:null };
   render();
 }
 function toggleAccordion(id){
@@ -357,7 +456,7 @@ function toggleAccordion(id){
   render();
 }
 function goContextual(itemId){
-  state = { view:&#x27;contextual&#x27;, openAccordion:null, mainLeaf:null, activeItem: itemId || CONTEXTUAL_GROUPS[0].items[0].id, path: [], flow:null };
+  state = { view:&amp;#x27;contextual&amp;#x27;, openAccordion:null, mainLeaf:null, activeItem: itemId || CONTEXTUAL_GROUPS[0].items[0].id, path: [], flow:null };
   render();
 }
 function selectContextualItem(id){
@@ -370,7 +469,7 @@ function popPathTo(index){ state.path = state.path.slice(0, index + 1); render()
 
 function startFlow(fromLabel){
   state.flow = { fromView: state.view, fromItem: state.activeItem, fromPath: [...state.path], step: 1, fromLabel };
-  state.view = &#x27;flow&#x27;;
+  state.view = &amp;#x27;flow&amp;#x27;;
   render();
 }
 function exitFlow(){
@@ -384,45 +483,45 @@ function exitFlow(){
 }
 function flowNext(){ state.flow.step++; render(); }
 function flowBack(){
-  if (state.flow.step &lt;= 1) { exitFlow(); return; }
+  if (state.flow.step &amp;lt;= 1) { exitFlow(); return; }
   state.flow.step--; render();
 }
 function stepProgress(step, total){
-  let dots = &#x27;&#x27;;
-  for (let i=1;i&lt;=total;i++) dots += `&lt;div class=&quot;step-dot ${i&lt;=step?&#x27;done&#x27;:&#x27;&#x27;}&quot;&gt;&lt;/div&gt;`;
-  return `&lt;div class=&quot;step-indicator&quot;&gt;&lt;div class=&quot;step-dots&quot;&gt;${dots}&lt;/div&gt;&lt;span class=&quot;step-label&quot;&gt;Step ${step} of ${total}&lt;/span&gt;&lt;/div&gt;`;
+  let dots = &amp;#x27;&amp;#x27;;
+  for (let i=1;i&amp;lt;=total;i++) dots += `&amp;lt;div class=&amp;quot;step-dot ${i&amp;lt;=step?&amp;#x27;done&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;`;
+  return `&amp;lt;div class=&amp;quot;step-indicator&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;step-dots&amp;quot;&amp;gt;${dots}&amp;lt;/div&amp;gt;&amp;lt;span class=&amp;quot;step-label&amp;quot;&amp;gt;Step ${step} of ${total}&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
 }
-function tag(text){ return `&lt;div class=&quot;pattern-tag&quot;&gt;${text}&lt;/div&gt;`; }
+function tag(text){ return `&amp;lt;div class=&amp;quot;pattern-tag&amp;quot;&amp;gt;${text}&amp;lt;/div&amp;gt;`; }
 
 /* ================= Sidebar rendering ================= */
 function renderSidebar(){
-  const sb = document.getElementById(&#x27;sidebar&#x27;);
-  sb.style.display = &#x27;&#x27;;
+  const sb = document.getElementById(&amp;#x27;sidebar&amp;#x27;);
+  sb.style.display = &amp;#x27;&amp;#x27;;
 
-  if (state.view === &#x27;flow&#x27;) {
-    // Full-Page Flow is a full takeover, so there&#x27;s no persistent nav chrome while a task is in progress.
-    sb.style.display = &#x27;none&#x27;;
+  if (state.view === &amp;#x27;flow&amp;#x27;) {
+    // Full-Page Flow is a full takeover, so there&amp;#x27;s no persistent nav chrome while a task is in progress.
+    sb.style.display = &amp;#x27;none&amp;#x27;;
     return;
   }
 
-  if (state.view === &#x27;main&#x27;) {
-    sb.className = &#x27;sidebar&#x27;;
-    let html = &#x27;&#x27;;
-    MAIN_ITEMS.forEach(it =&gt; {
-      if (it.type === &#x27;accordion&#x27;) {
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    sb.className = &amp;#x27;sidebar&amp;#x27;;
+    let html = &amp;#x27;&amp;#x27;;
+    MAIN_ITEMS.forEach(it =&amp;gt; {
+      if (it.type === &amp;#x27;accordion&amp;#x27;) {
         const isOpen = state.openAccordion === it.id;
-        html += `&lt;div class=&quot;nav-item&quot; onclick=&quot;toggleAccordion(&#x27;${it.id}&#x27;)&quot;&gt;${it.label}&lt;span class=&quot;chev ${isOpen?&#x27;open&#x27;:&#x27;&#x27;}&quot;&gt;&amp;#9662;&lt;/span&gt;&lt;/div&gt;`;
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;toggleAccordion(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;span class=&amp;quot;chev ${isOpen?&amp;#x27;open&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;amp;#9662;&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
         if (isOpen) {
-          it.children.forEach(c =&gt; {
-            const activeCls = state.mainLeaf === c.id ? &#x27;active&#x27; : &#x27;&#x27;;
-            html += `&lt;div class=&quot;accordion-child ${activeCls}&quot; onclick=&quot;event.stopPropagation(); goMain(&#x27;${c.id}&#x27;)&quot;&gt;${c.label}&lt;/div&gt;`;
+          it.children.forEach(c =&amp;gt; {
+            const activeCls = state.mainLeaf === c.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+            html += `&amp;lt;div class=&amp;quot;accordion-child ${activeCls}&amp;quot; onclick=&amp;quot;event.stopPropagation(); goMain(&amp;#x27;${c.id}&amp;#x27;)&amp;quot;&amp;gt;${c.label}&amp;lt;/div&amp;gt;`;
           });
         }
-      } else if (it.type === &#x27;contextual&#x27;) {
-        html += `&lt;div class=&quot;nav-item&quot; onclick=&quot;goContextual()&quot;&gt;${it.label}&lt;/div&gt;`;
+      } else if (it.type === &amp;#x27;contextual&amp;#x27;) {
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;goContextual()&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
       } else {
-        const activeCls = state.mainLeaf === it.id ? &#x27;active&#x27; : &#x27;&#x27;;
-        html += `&lt;div class=&quot;nav-item ${activeCls}&quot; onclick=&quot;goMain(&#x27;${it.id}&#x27;)&quot;&gt;${it.label}&lt;/div&gt;`;
+        const activeCls = state.mainLeaf === it.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+        html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;goMain(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
       }
     });
     sb.innerHTML = html;
@@ -430,13 +529,13 @@ function renderSidebar(){
   }
 
   // contextual
-  sb.className = &#x27;sidebar&#x27;;
-  let html = `&lt;div class=&quot;back-control&quot; onclick=&quot;goMain()&quot;&gt;&amp;larr; Volver a la app&lt;/div&gt;`;
-  CONTEXTUAL_GROUPS.forEach(g =&gt; {
-    html += `&lt;div class=&quot;group-label&quot;&gt;${g.name}&lt;/div&gt;`;
-    g.items.forEach(it =&gt; {
-      const activeCls = it.id === state.activeItem ? &#x27;active&#x27; : &#x27;&#x27;;
-      html += `&lt;div class=&quot;nav-item ${activeCls}&quot; onclick=&quot;selectContextualItem(&#x27;${it.id}&#x27;)&quot;&gt;${it.label}&lt;/div&gt;`;
+  sb.className = &amp;#x27;sidebar&amp;#x27;;
+  let html = `&amp;lt;div class=&amp;quot;back-control&amp;quot; onclick=&amp;quot;goMain()&amp;quot;&amp;gt;&amp;amp;larr; Volver a la app&amp;lt;/div&amp;gt;`;
+  CONTEXTUAL_GROUPS.forEach(g =&amp;gt; {
+    html += `&amp;lt;div class=&amp;quot;group-label&amp;quot;&amp;gt;${g.name}&amp;lt;/div&amp;gt;`;
+    g.items.forEach(it =&amp;gt; {
+      const activeCls = it.id === state.activeItem ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+      html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;selectContextualItem(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
     });
   });
   sb.innerHTML = html;
@@ -444,23 +543,23 @@ function renderSidebar(){
 /* ================= Content + subbar rendering ================= */
 function render(){
   renderSidebar();
-  const content = document.getElementById(&#x27;content&#x27;);
-  const subbar = document.getElementById(&#x27;flowSubbar&#x27;);
+  const content = document.getElementById(&amp;#x27;content&amp;#x27;);
+  const subbar = document.getElementById(&amp;#x27;flowSubbar&amp;#x27;);
 
-  if (state.view === &#x27;flow&#x27;) {
-    subbar.style.display = &#x27;flex&#x27;;
-    subbar.style.justifyContent = &#x27;flex-end&#x27;;
-    subbar.innerHTML = `&lt;span class=&quot;exit-control&quot; onclick=&quot;exitFlow()&quot;&gt;&amp;times;&lt;/span&gt;`;
+  if (state.view === &amp;#x27;flow&amp;#x27;) {
+    subbar.style.display = &amp;#x27;flex&amp;#x27;;
+    subbar.style.justifyContent = &amp;#x27;flex-end&amp;#x27;;
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;exit-control&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;&amp;amp;times;&amp;lt;/span&amp;gt;`;
     content.innerHTML = renderFlow();
     content.scrollTop = 0;
     return;
   }
 
-  if (state.view === &#x27;main&#x27;) {
-    if (state.mainLeaf === &#x27;b1&#x27; &amp;&amp; state.path.length &gt; 0) {
-      renderPathSubbar(subbar, &#x27;Section B1&#x27;, { subA:&#x27;Sub Section&#x27;, subDeep:&#x27;Deeper Sub Item&#x27; });
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    if (state.mainLeaf === &amp;#x27;b1&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+      renderPathSubbar(subbar, &amp;#x27;Section B1&amp;#x27;, { subA:&amp;#x27;Sub Section&amp;#x27;, subDeep:&amp;#x27;Deeper Sub Item&amp;#x27; });
     } else {
-      subbar.style.display = &#x27;none&#x27;;
+      subbar.style.display = &amp;#x27;none&amp;#x27;;
     }
     content.innerHTML = renderMainLeaf();
     content.scrollTop = 0;
@@ -468,146 +567,1094 @@ function render(){
   }
 
   // contextual
-  if (state.activeItem === &#x27;item-21&#x27; &amp;&amp; state.path.length &gt; 0) {
-    renderPathSubbar(subbar, &#x27;Item 2.1&#x27;, { cardA:&#x27;Card A&#x27;, deep:&#x27;Deeper Item&#x27; });
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+    renderPathSubbar(subbar, &amp;#x27;Item 2.1&amp;#x27;, { cardA:&amp;#x27;Card A&amp;#x27;, deep:&amp;#x27;Deeper Item&amp;#x27; });
   } else {
-    subbar.style.display = &#x27;none&#x27;;
+    subbar.style.display = &amp;#x27;none&amp;#x27;;
   }
   content.innerHTML = renderContextualItem();
   content.scrollTop = 0;
 }
 
 // This path header (back-label at 1 ancestor, breadcrumb at 2+) is a content-area rule.
-// It isn&#x27;t specific to the Contextual Sidebar: it applies to any leaf&#x27;s content, whether
+// It isn&amp;#x27;t specific to the Contextual Sidebar: it applies to any leaf&amp;#x27;s content, whether
 // that leaf sits under a Contextual Sidebar (Item 2.1) or a Main-state Accordion (Section B1).
 function renderPathSubbar(subbar, rootLabel, labels){
-  const path = [{ label: rootLabel, idx:-1 }, ...state.path.map((seg, i) =&gt; ({ label: labels[seg], idx: i }))];
-  subbar.style.display = &#x27;flex&#x27;;
-  subbar.style.justifyContent = &#x27;flex-start&#x27;;
+  const path = [{ label: rootLabel, idx:-1 }, ...state.path.map((seg, i) =&amp;gt; ({ label: labels[seg], idx: i }))];
+  subbar.style.display = &amp;#x27;flex&amp;#x27;;
+  subbar.style.justifyContent = &amp;#x27;flex-start&amp;#x27;;
   const ancestors = path.length - 1;
   if (ancestors === 1) {
-    subbar.innerHTML = `&lt;span class=&quot;back-label&quot; onclick=&quot;popPathTo(-1)&quot;&gt;&amp;larr; Volver a ${rootLabel}&lt;/span&gt;`;
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;back-label&amp;quot; onclick=&amp;quot;popPathTo(-1)&amp;quot;&amp;gt;&amp;amp;larr; Volver a ${rootLabel}&amp;lt;/span&amp;gt;`;
   } else {
-    subbar.innerHTML = path.map((c, i) =&gt; {
-      const sep = i &gt; 0 ? &#x27;&lt;span class=&quot;crumb-sep&quot;&gt;/&lt;/span&gt;&#x27; : &#x27;&#x27;;
+    subbar.innerHTML = path.map((c, i) =&amp;gt; {
+      const sep = i &amp;gt; 0 ? &amp;#x27;&amp;lt;span class=&amp;quot;crumb-sep&amp;quot;&amp;gt;/&amp;lt;/span&amp;gt;&amp;#x27; : &amp;#x27;&amp;#x27;;
       const isLast = i === path.length - 1;
-      if (isLast) return sep + `&lt;span class=&quot;crumb-current&quot;&gt;${c.label}&lt;/span&gt;`;
-      return sep + `&lt;span class=&quot;crumb&quot; onclick=&quot;popPathTo(${c.idx})&quot;&gt;${c.label}&lt;/span&gt;`;
-    }).join(&#x27;&#x27;);
+      if (isLast) return sep + `&amp;lt;span class=&amp;quot;crumb-current&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+      return sep + `&amp;lt;span class=&amp;quot;crumb&amp;quot; onclick=&amp;quot;popPathTo(${c.idx})&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+    }).join(&amp;#x27;&amp;#x27;);
   }
 }
 
 /* ---- Main state leaf content ---- */
 function renderMainLeaf(){
   if (!state.mainLeaf) {
-    return `${tag(&#x27;Main Sidebar&#x27;)}&lt;h1&gt;Main view&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;This is the default state, showing the top-level product sections. Click &quot;Section B&quot; to see an Accordion, or &quot;Section C&quot; to enter a Contextual Sidebar.&lt;/p&gt;`;
+    return `${tag(&amp;#x27;Main Sidebar&amp;#x27;)}&amp;lt;h1&amp;gt;Main view&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;This is the default state, showing the top-level product sections. Click &amp;quot;Section B&amp;quot; to see an Accordion, or &amp;quot;Section C&amp;quot; to enter a Contextual Sidebar.&amp;lt;/p&amp;gt;`;
   }
-  if (state.mainLeaf === &#x27;b1&#x27;) {
+  if (state.mainLeaf === &amp;#x27;b1&amp;#x27;) {
     const [l1, l2] = state.path;
     if (l2) {
       return `
-        ${tag(&#x27;2 ancestors: breadcrumb (Accordion child)&#x27;)}
-        &lt;h1&gt;Deeper Sub Item&lt;/h1&gt;
-        &lt;p class=&quot;subtitle&quot;&gt;Two layers deep from an Accordion child in Main state. It follows the same rule as Item 2.1 in the Contextual Sidebar, because the path header doesn&#x27;t care which pattern the entry point came from, only how deep the content itself goes.&lt;/p&gt;
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Sub Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from an Accordion child in Main state. It follows the same rule as Item 2.1 in the Contextual Sidebar, because the path header doesn&amp;#x27;t care which pattern the entry point came from, only how deep the content itself goes.&amp;lt;/p&amp;gt;
       `;
     }
     if (l1) {
       return `
-        ${tag(&#x27;1 ancestor: back-label (Accordion child)&#x27;)}
-        &lt;h1&gt;Sub Section&lt;/h1&gt;
-        &lt;p class=&quot;subtitle&quot;&gt;One layer deep from Section B1. It&#x27;s still just a back-label, the same mechanical rule as any other leaf, regardless of entry pattern.&lt;/p&gt;
-        &lt;div class=&quot;row&quot; onclick=&quot;pushPath(&#x27;subDeep&#x27;)&quot;&gt;&lt;div class=&quot;label&quot;&gt;Go one layer deeper &amp;rsaquo;&lt;/div&gt;&lt;/div&gt;
+        ${tag(&amp;#x27;1 ancestor: back-label (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Sub Section&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Section B1. It&amp;#x27;s still just a back-label, the same mechanical rule as any other leaf, regardless of entry pattern.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subDeep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
       `;
     }
     return `
-      ${tag(&#x27;Accordion child (Main state), root&#x27;)}
-      &lt;h1&gt;Section B1&lt;/h1&gt;
-      &lt;p class=&quot;subtitle&quot;&gt;A flat child revealed by the Accordion, still Main state. Unlike Section B2 and B3, this one has its own further depth, to show that the back-vs-breadcrumb rule isn&#x27;t specific to the Contextual Sidebar.&lt;/p&gt;
-      &lt;div class=&quot;card&quot; onclick=&quot;pushPath(&#x27;subA&#x27;)&quot;&gt;&lt;div class=&quot;title&quot;&gt;Sub Section&lt;/div&gt;&lt;div class=&quot;desc&quot;&gt;Drills two layers deep, following the same back-label to breadcrumb progression as Item 2.1.&lt;/div&gt;&lt;/div&gt;
+      ${tag(&amp;#x27;Accordion child (Main state), root&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Section B1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A flat child revealed by the Accordion, still Main state. Unlike Section B2 and B3, this one has its own further depth, to show that the back-vs-breadcrumb rule isn&amp;#x27;t specific to the Contextual Sidebar.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Sub Section&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, following the same back-label to breadcrumb progression as Item 2.1.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
     `;
   }
 
-  const labels = { &#x27;section-a&#x27;:&#x27;Section A (Plain Main-State Link)&#x27;, b2:&#x27;Section B2&#x27;, b3:&#x27;Section B3&#x27; };
-  const isAccordionChild = [&#x27;b2&#x27;,&#x27;b3&#x27;].includes(state.mainLeaf);
+  const labels = { &amp;#x27;section-a&amp;#x27;:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, b2:&amp;#x27;Section B2&amp;#x27;, b3:&amp;#x27;Section B3&amp;#x27; };
+  const isAccordionChild = [&amp;#x27;b2&amp;#x27;,&amp;#x27;b3&amp;#x27;].includes(state.mainLeaf);
   return `
-    ${tag(isAccordionChild ? &#x27;Accordion child (Main state)&#x27; : &#x27;Plain Main-state link&#x27;)}
-    &lt;h1&gt;${labels[state.mainLeaf]}&lt;/h1&gt;
-    &lt;p class=&quot;subtitle&quot;&gt;${isAccordionChild
-      ? &#x27;A flat child revealed by the Accordion, still Main state, with the sidebar unchanged otherwise.&#x27;
-      : &#x27;A simple page with no children, so no Accordion and no Contextual takeover are needed.&#x27;}&lt;/p&gt;
+    ${tag(isAccordionChild ? &amp;#x27;Accordion child (Main state)&amp;#x27; : &amp;#x27;Plain Main-state link&amp;#x27;)}
+    &amp;lt;h1&amp;gt;${labels[state.mainLeaf]}&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;${isAccordionChild
+      ? &amp;#x27;A flat child revealed by the Accordion, still Main state, with the sidebar unchanged otherwise.&amp;#x27;
+      : &amp;#x27;A simple page with no children, so no Accordion and no Contextual takeover are needed.&amp;#x27;}&amp;lt;/p&amp;gt;
   `;
 }
 
 /* ---- Contextual item content ---- */
 function renderContextualItem(){
-  if (state.activeItem === &#x27;item-11&#x27;) {
+  if (state.activeItem === &amp;#x27;item-11&amp;#x27;) {
     return `
-      ${tag(&#x27;Contextual layer, flat item&#x27;)}
-      &lt;h1&gt;Item 1.1&lt;/h1&gt;
-      &lt;p class=&quot;subtitle&quot;&gt;A plain browsing page inside the Contextual Sidebar. It also contains an action that starts a task flow.&lt;/p&gt;
-      &lt;button class=&quot;btn btn-primary&quot; onclick=&quot;startFlow(&#x27;Item 1.1&#x27;)&quot;&gt;Start task flow&lt;/button&gt;
+      ${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 1.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page inside the Contextual Sidebar. It also contains an action that starts a task flow.&amp;lt;/p&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;startFlow(&amp;#x27;Item 1.1&amp;#x27;)&amp;quot;&amp;gt;Start task flow&amp;lt;/button&amp;gt;
     `;
   }
-  if (state.activeItem === &#x27;item-12&#x27;) {
-    return `${tag(&#x27;Contextual layer, flat item&#x27;)}&lt;h1&gt;Item 1.2&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;Another plain browsing page. No further nesting.&lt;/p&gt;`;
+  if (state.activeItem === &amp;#x27;item-12&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 1.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Another plain browsing page. No further nesting.&amp;lt;/p&amp;gt;`;
   }
-  if (state.activeItem === &#x27;item-22&#x27;) {
-    return `${tag(&#x27;Contextual layer, flat item&#x27;)}&lt;h1&gt;Item 2.2&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;A plain browsing page alongside Item 2.1&#x27;s drill-down.&lt;/p&gt;`;
+  if (state.activeItem === &amp;#x27;item-22&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 2.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page alongside Item 2.1&amp;#x27;s drill-down.&amp;lt;/p&amp;gt;`;
   }
-  if (state.activeItem === &#x27;item-21&#x27;) {
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27;) {
     const [l1, l2] = state.path;
     if (l2) {
       return `
-        ${tag(&#x27;2 ancestors: breadcrumb (Contextual Sidebar item)&#x27;)}
-        &lt;h1&gt;Deeper Item&lt;/h1&gt;
-        &lt;p class=&quot;subtitle&quot;&gt;Two layers deep from Item 2.1. The header now shows a full breadcrumb, because there&#x27;s finally an intermediate layer worth skipping directly to.&lt;/p&gt;
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from Item 2.1. The header now shows a full breadcrumb, because there&amp;#x27;s finally an intermediate layer worth skipping directly to.&amp;lt;/p&amp;gt;
       `;
     }
     if (l1) {
       return `
-        ${tag(&#x27;1 ancestor: back-label (Contextual Sidebar item)&#x27;)}
-        &lt;h1&gt;Card A&lt;/h1&gt;
-        &lt;p class=&quot;subtitle&quot;&gt;One layer deep from Item 2.1. The header renders as a plain back-label, a length-1 path shown at its simplest.&lt;/p&gt;
-        &lt;div class=&quot;row&quot; onclick=&quot;pushPath(&#x27;deep&#x27;)&quot;&gt;&lt;div class=&quot;label&quot;&gt;Go one layer deeper &amp;rsaquo;&lt;/div&gt;&lt;/div&gt;
+        ${tag(&amp;#x27;1 ancestor: back-label (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Card A&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Item 2.1. The header renders as a plain back-label, a length-1 path shown at its simplest.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;deep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
       `;
     }
     return `
-      ${tag(&#x27;Root level (no subbar)&#x27;)}
-      &lt;h1&gt;Item 2.1&lt;/h1&gt;
-      &lt;p class=&quot;subtitle&quot;&gt;The Contextual Sidebar already shows this is selected, so no header control is needed yet. Click a card to start a navigational drill-down.&lt;/p&gt;
-      &lt;div class=&quot;card&quot; onclick=&quot;pushPath(&#x27;cardA&#x27;)&quot;&gt;&lt;div class=&quot;title&quot;&gt;Card A&lt;/div&gt;&lt;div class=&quot;desc&quot;&gt;Drills two layers deep, demonstrating back-label first, then breadcrumb.&lt;/div&gt;&lt;/div&gt;
-      &lt;div class=&quot;card&quot;&gt;&lt;div class=&quot;title&quot;&gt;Card B&lt;/div&gt;&lt;div class=&quot;desc&quot;&gt;A sibling destination that isn&#x27;t wired up in this demo.&lt;/div&gt;&lt;/div&gt;
+      ${tag(&amp;#x27;Root level (no subbar)&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 2.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;The Contextual Sidebar already shows this is selected, so no header control is needed yet. Click a card to start a navigational drill-down.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;cardA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card A&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, demonstrating back-label first, then breadcrumb.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card B&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;A sibling destination that isn&amp;#x27;t wired up in this demo.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
     `;
   }
-  return &#x27;&#x27;;
+  return &amp;#x27;&amp;#x27;;
 }
 
 /* ---- Full-Page Flow content ---- */
 function renderFlow(){
   const step = state.flow.step;
   const total = 3;
-  const nav = () =&gt; `
-    &lt;div style=&quot;margin-top:24px&quot;&gt;
-      &lt;button class=&quot;btn-link&quot; onclick=&quot;flowBack()&quot;&gt;${step===1?&#x27;Cancelar&#x27;:&#x27;Atrás&#x27;}&lt;/button&gt;
-      &lt;button class=&quot;btn btn-primary&quot; style=&quot;margin-left:12px&quot; onclick=&quot;flowNext()&quot;&gt;Continuar&lt;/button&gt;
-    &lt;/div&gt;`;
+  const nav = () =&amp;gt; `
+    &amp;lt;div style=&amp;quot;margin-top:24px&amp;quot;&amp;gt;
+      &amp;lt;button class=&amp;quot;btn-link&amp;quot; onclick=&amp;quot;flowBack()&amp;quot;&amp;gt;${step===1?&amp;#x27;Cancelar&amp;#x27;:&amp;#x27;Atrás&amp;#x27;}&amp;lt;/button&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; style=&amp;quot;margin-left:12px&amp;quot; onclick=&amp;quot;flowNext()&amp;quot;&amp;gt;Continuar&amp;lt;/button&amp;gt;
+    &amp;lt;/div&amp;gt;`;
 
   if (step === 1) {
-    return `${tag(&#x27;Full-Page Flow, step 1 of 3&#x27;)}${stepProgress(step,total)}&lt;h1&gt;Task flow, step 1&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;Launched from &quot;${state.flow.fromLabel}&quot;. There&#x27;s no sidebar navigation while this is open, since attention narrows to the task.&lt;/p&gt;${nav()}`;
+    return `${tag(&amp;#x27;Full-Page Flow, step 1 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 1&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Launched from &amp;quot;${state.flow.fromLabel}&amp;quot;. There&amp;#x27;s no sidebar navigation while this is open, since attention narrows to the task.&amp;lt;/p&amp;gt;${nav()}`;
   }
   if (step === 2) {
-    return `${tag(&#x27;Full-Page Flow, step 2 of 3&#x27;)}${stepProgress(step,total)}&lt;h1&gt;Task flow, step 2&lt;/h1&gt;&lt;p class=&quot;subtitle&quot;&gt;&quot;Back&quot; here means &quot;previous step,&quot; not a navigational layer, since this flow tracks no path at all.&lt;/p&gt;${nav()}`;
+    return `${tag(&amp;#x27;Full-Page Flow, step 2 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;&amp;quot;Back&amp;quot; here means &amp;quot;previous step,&amp;quot; not a navigational layer, since this flow tracks no path at all.&amp;lt;/p&amp;gt;${nav()}`;
   }
   return `
-    ${tag(&#x27;Full-Page Flow, complete&#x27;)}
-    &lt;h1&gt;Done&lt;/h1&gt;
-    &lt;p class=&quot;subtitle&quot;&gt;Finishing returns to exactly where the flow was launched from, &quot;${state.flow.fromLabel}&quot;, not to Main.&lt;/p&gt;
-    &lt;button class=&quot;btn btn-primary&quot; onclick=&quot;exitFlow()&quot;&gt;Finish&lt;/button&gt;
+    ${tag(&amp;#x27;Full-Page Flow, complete&amp;#x27;)}
+    &amp;lt;h1&amp;gt;Done&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Finishing returns to exactly where the flow was launched from, &amp;quot;${state.flow.fromLabel}&amp;quot;, not to Main.&amp;lt;/p&amp;gt;
+    &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;Finish&amp;lt;/button&amp;gt;
   `;
 }
 
 /* ================= Init ================= */
 render();
+&amp;lt;/script&amp;gt;
+&amp;lt;/body&amp;gt;
+&amp;lt;/html&amp;gt;
+&quot;&gt;&lt;/iframe&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;device-wrap tablet-wrap&quot; id=&quot;wrap-tablet&quot;&gt;
+      &lt;iframe srcdoc=&quot;&amp;lt;!DOCTYPE html&amp;gt;
+&amp;lt;html lang=&amp;quot;en&amp;quot;&amp;gt;
+&amp;lt;head&amp;gt;
+&amp;lt;meta charset=&amp;quot;UTF-8&amp;quot;&amp;gt;
+&amp;lt;meta name=&amp;quot;viewport&amp;quot; content=&amp;quot;width=device-width, initial-scale=1&amp;quot;&amp;gt;
+&amp;lt;title&amp;gt;Navigation Pattern System: Tablet Reference Demo (Lo-Fi)&amp;lt;/title&amp;gt;
+&amp;lt;style&amp;gt;
+  :root {
+    --accent: #5463FF;
+    --accent-light: #DFE6FF;
+    --ink: #1E1E1E;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --bg-sidebar: #FAFAFA;
+    --bg-app: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, &amp;quot;Segoe UI&amp;quot;, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #fff;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .appbar {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+  }
+  .hamburger { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; flex-shrink:0; }
+  .hamburger:hover { background:#F0F1FF; }
+  .hamburger .bars { width:18px; height:12px; position:relative; }
+  .hamburger .bars span { position:absolute; left:0; width:100%; height:2px; background:var(--ink); }
+  .hamburger .bars span:nth-child(1){ top:0; }
+  .hamburger .bars span:nth-child(2){ top:5px; }
+  .hamburger .bars span:nth-child(3){ top:10px; }
+  .appbar .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:16px; }
+  .appbar .logo .dot { width:22px; height:22px; border-radius:6px; background:var(--accent); }
+  .appbar .right { color:var(--muted); font-size:13px; margin-left:auto; }
+
+  .layout { position:relative; height: calc(100vh - 60px); overflow:hidden; }
+
+  .backdrop { display:none; position:absolute; inset:0; background:rgba(0,0,0,0.28); z-index:15; }
+  .backdrop.open { display:block; }
+
+  .sidebar {
+    position:absolute; top:0; left:0; bottom:0;
+    width: 300px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 16px 0;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform .18s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.12);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 11px 20px;
+    font-size: 14px;
+    color: var(--ink);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: #F0F1FF; }
+  .nav-item.active { background: var(--accent-light); border-left-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .nav-item .chev { color: var(--muted); font-size: 11px; transition: transform .12s; }
+  .nav-item .chev.open { transform: rotate(180deg); }
+  .accordion-child { padding: 9px 20px 9px 40px; font-size: 13.5px; color: var(--ink); cursor:pointer; }
+  .accordion-child.active { color: var(--accent); font-weight:600; background: var(--accent-light); }
+
+  .group-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 20px 6px; font-weight: 700; }
+  .group-label:first-child { padding-top: 4px; }
+
+  .back-control { display:flex; align-items:center; gap:8px; padding: 4px 20px 16px; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+
+  .content-col { width:100%; height:100%; display:flex; flex-direction:column; min-width:0; }
+
+  .flow-subbar { display:none; align-items:center; gap:8px; height: 52px; padding: 0 28px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--ink); background: #fff; flex-shrink: 0; }
+  .flow-subbar .crumb { cursor:pointer; color: var(--accent); }
+  .flow-subbar .crumb-current { color: var(--ink); cursor:default; }
+  .flow-subbar .crumb-sep { color: var(--muted); }
+  .flow-subbar .back-label { cursor:pointer; }
+  .flow-subbar .exit-control { cursor:pointer; font-size: 22px; line-height:1; padding: 4px 6px; color: var(--muted); }
+
+  .content-scroll { flex:1; overflow-y:auto; padding: 32px 28px; max-width: 640px; }
+
+  .pattern-tag { display:inline-block; background: var(--accent-light); color: var(--accent); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:4px 10px; border-radius:20px; margin-bottom:16px; }
+  h1 { font-size: 21px; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 26px; }
+
+  .card { border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px; cursor:pointer; }
+  .card .title { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .card .desc { font-size:13px; color:var(--muted); }
+
+  .row { display:flex; align-items:center; justify-content:space-between; padding: 10px 0; border-bottom: 1px solid var(--border); cursor:pointer; }
+  .row .value { font-size:13px; color:var(--muted); }
+
+  .btn { display:inline-block; padding:9px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+  .btn-primary { background: var(--accent); color:#fff; }
+  .btn-link { color: var(--accent); font-weight:600; cursor:pointer; background:none; border:none; padding:0; font-size:14px; }
+
+  .step-indicator { display:flex; align-items:center; gap:12px; margin-bottom:22px; }
+  .step-dots { display:flex; gap:6px; }
+  .step-dot { width:24px; height:4px; border-radius:2px; background:var(--border); }
+  .step-dot.done { background: var(--accent); }
+  .step-label { font-size:12px; color:var(--muted); }
+&amp;lt;/style&amp;gt;
+&amp;lt;/head&amp;gt;
+&amp;lt;body&amp;gt;
+
+  &amp;lt;div class=&amp;quot;appbar&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;hamburger&amp;quot; id=&amp;quot;hamburger&amp;quot; onclick=&amp;quot;toggleDrawer()&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;bars&amp;quot;&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;logo&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;dot&amp;quot;&amp;gt;&amp;lt;/div&amp;gt; Pattern Demo&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;right&amp;quot;&amp;gt;Navigation Pattern System, reference only, dummy content&amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
+
+  &amp;lt;div class=&amp;quot;layout&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;backdrop&amp;quot; id=&amp;quot;backdrop&amp;quot; onclick=&amp;quot;closeDrawer()&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;sidebar&amp;quot; id=&amp;quot;sidebar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;content-col&amp;quot;&amp;gt;
+      &amp;lt;div class=&amp;quot;flow-subbar&amp;quot; id=&amp;quot;flowSubbar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;content-scroll&amp;quot; id=&amp;quot;content&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
+
+&amp;lt;script&amp;gt;
+/* ================= Dummy data model (identical to desktop) ================= */
+const MAIN_ITEMS = [
+  { id:&amp;#x27;section-a&amp;#x27;, label:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, type:&amp;#x27;link&amp;#x27; },
+  { id:&amp;#x27;section-b&amp;#x27;, label:&amp;#x27;Section B (Accordion)&amp;#x27;, type:&amp;#x27;accordion&amp;#x27;, children:[
+      { id:&amp;#x27;b1&amp;#x27;, label:&amp;#x27;Section B1&amp;#x27; },
+      { id:&amp;#x27;b2&amp;#x27;, label:&amp;#x27;Section B2&amp;#x27; },
+      { id:&amp;#x27;b3&amp;#x27;, label:&amp;#x27;Section B3&amp;#x27; },
+  ]},
+  { id:&amp;#x27;section-c&amp;#x27;, label:&amp;#x27;Section C (Contextual Sidebar)&amp;#x27;, type:&amp;#x27;contextual&amp;#x27; },
+];
+
+const CONTEXTUAL_GROUPS = [
+  { name:&amp;#x27;Group 1&amp;#x27;, items:[
+    { id:&amp;#x27;item-11&amp;#x27;, label:&amp;#x27;Item 1.1&amp;#x27; },
+    { id:&amp;#x27;item-12&amp;#x27;, label:&amp;#x27;Item 1.2&amp;#x27; },
+  ]},
+  { name:&amp;#x27;Group 2&amp;#x27;, items:[
+    { id:&amp;#x27;item-21&amp;#x27;, label:&amp;#x27;Item 2.1&amp;#x27; },
+    { id:&amp;#x27;item-22&amp;#x27;, label:&amp;#x27;Item 2.2&amp;#x27; },
+  ]},
+];
+
+/* ================= State (identical shape and rules to desktop) ================= */
+let state = {
+  view: &amp;#x27;main&amp;#x27;,
+  openAccordion: null,
+  mainLeaf: null,
+  activeItem: null,
+  path: [],
+  flow: null,
+};
+
+let drawerOpen = false;
+function toggleDrawer(){ drawerOpen = !drawerOpen; renderDrawer(); }
+function openDrawer(){ drawerOpen = true; renderDrawer(); }
+function closeDrawer(){ drawerOpen = false; renderDrawer(); }
+function renderDrawer(){
+  document.getElementById(&amp;#x27;sidebar&amp;#x27;).classList.toggle(&amp;#x27;open&amp;#x27;, drawerOpen);
+  document.getElementById(&amp;#x27;backdrop&amp;#x27;).classList.toggle(&amp;#x27;open&amp;#x27;, drawerOpen);
+}
+
+/* ================= Navigation actions — same rules as desktop.
+   The only tablet-specific addition: selecting a leaf/item closes the drawer
+   afterward, since the drawer is an overlay over content, not a persistent
+   column. Entering &amp;quot;Section C&amp;quot; or expanding an Accordion keeps the drawer
+   open, since the user still needs to see the list to pick something. ================= */
+function goMain(leaf){
+  state = { view:&amp;#x27;main&amp;#x27;, openAccordion: state.openAccordion, mainLeaf: leaf || null, activeItem:null, path:[], flow:null };
+  if (leaf) closeDrawer();
+  render();
+}
+function toggleAccordion(id){
+  state.openAccordion = state.openAccordion === id ? null : id;
+  state.mainLeaf = null;
+  render();
+}
+function goContextual(){
+  state = { view:&amp;#x27;contextual&amp;#x27;, openAccordion:null, mainLeaf:null, activeItem: null, path: [], flow:null };
+  openDrawer();
+  render();
+}
+function selectContextualItem(id){
+  // Reachable from the drawer even mid-flow (see render()) — reset view/flow
+  // explicitly, the same way goMain()/goContextual() already do, so picking a
+  // real destination always discards an in-progress flow, never leaves it
+  // silently stuck showing flow content for the wrong item.
+  state.view = &amp;#x27;contextual&amp;#x27;;
+  state.flow = null;
+  state.activeItem = id;
+  state.path = [];
+  closeDrawer();
+  render();
+}
+function pushPath(segment){ state.path.push(segment); render(); }
+function popPathTo(index){ state.path = state.path.slice(0, index + 1); render(); }
+
+function startFlow(fromLabel){
+  state.flow = { fromView: state.view, fromItem: state.activeItem, fromPath: [...state.path], step: 1, fromLabel };
+  state.view = &amp;#x27;flow&amp;#x27;;
+  closeDrawer();
+  render();
+}
+function exitFlow(){
+  const f = state.flow;
+  if (!f) { goMain(); return; }
+  state.view = f.fromView;
+  state.activeItem = f.fromItem;
+  state.path = f.fromPath;
+  state.flow = null;
+  render();
+}
+function flowNext(){ state.flow.step++; render(); }
+function flowBack(){
+  if (state.flow.step &amp;lt;= 1) { exitFlow(); return; }
+  state.flow.step--; render();
+}
+function stepProgress(step, total){
+  let dots = &amp;#x27;&amp;#x27;;
+  for (let i=1;i&amp;lt;=total;i++) dots += `&amp;lt;div class=&amp;quot;step-dot ${i&amp;lt;=step?&amp;#x27;done&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;`;
+  return `&amp;lt;div class=&amp;quot;step-indicator&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;step-dots&amp;quot;&amp;gt;${dots}&amp;lt;/div&amp;gt;&amp;lt;span class=&amp;quot;step-label&amp;quot;&amp;gt;Step ${step} of ${total}&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
+}
+function tag(text){ return `&amp;lt;div class=&amp;quot;pattern-tag&amp;quot;&amp;gt;${text}&amp;lt;/div&amp;gt;`; }
+
+/* ================= Drawer (sidebar) rendering — same list markup as desktop ================= */
+function renderSidebar(){
+  const sb = document.getElementById(&amp;#x27;sidebar&amp;#x27;);
+
+  if (state.view === &amp;#x27;flow&amp;#x27;) return; // drawer stays as-is behind a hidden state; toggling it is disabled during a flow (see hamburger note in appbar)
+
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    let html = &amp;#x27;&amp;#x27;;
+    MAIN_ITEMS.forEach(it =&amp;gt; {
+      if (it.type === &amp;#x27;accordion&amp;#x27;) {
+        const isOpen = state.openAccordion === it.id;
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;toggleAccordion(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;span class=&amp;quot;chev ${isOpen?&amp;#x27;open&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;amp;#9662;&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
+        if (isOpen) {
+          it.children.forEach(c =&amp;gt; {
+            const activeCls = state.mainLeaf === c.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+            html += `&amp;lt;div class=&amp;quot;accordion-child ${activeCls}&amp;quot; onclick=&amp;quot;event.stopPropagation(); goMain(&amp;#x27;${c.id}&amp;#x27;)&amp;quot;&amp;gt;${c.label}&amp;lt;/div&amp;gt;`;
+          });
+        }
+      } else if (it.type === &amp;#x27;contextual&amp;#x27;) {
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;goContextual()&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+      } else {
+        const activeCls = state.mainLeaf === it.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+        html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;goMain(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+      }
+    });
+    sb.innerHTML = html;
+    return;
+  }
+
+  // contextual
+  let html = `&amp;lt;div class=&amp;quot;back-control&amp;quot; onclick=&amp;quot;goMain()&amp;quot;&amp;gt;&amp;amp;larr; Volver a la app&amp;lt;/div&amp;gt;`;
+  CONTEXTUAL_GROUPS.forEach(g =&amp;gt; {
+    html += `&amp;lt;div class=&amp;quot;group-label&amp;quot;&amp;gt;${g.name}&amp;lt;/div&amp;gt;`;
+    g.items.forEach(it =&amp;gt; {
+      const activeCls = it.id === state.activeItem ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+      html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;selectContextualItem(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+    });
+  });
+  sb.innerHTML = html;
+}
+
+/* ================= Content + subbar rendering — identical logic to desktop ================= */
+function render(){
+  renderSidebar();
+  renderDrawer();
+  const content = document.getElementById(&amp;#x27;content&amp;#x27;);
+  const subbar = document.getElementById(&amp;#x27;flowSubbar&amp;#x27;);
+
+  // Unlike desktop, the hamburger stays visible and tappable during a flow: the
+  // sidebar was already hidden-by-default here, so this is the same discovery
+  // affordance that&amp;#x27;s always present, not a reintroduced persistent sidebar.
+  // Opening the drawer and picking a real destination still works correctly —
+  // goMain()/selectContextualItem()/goContextual() all rebuild state with flow:null,
+  // so navigating away mid-flow safely discards it, the same as tapping X.
+  if (state.view === &amp;#x27;flow&amp;#x27;) {
+    subbar.style.display = &amp;#x27;flex&amp;#x27;;
+    subbar.style.justifyContent = &amp;#x27;flex-end&amp;#x27;;
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;exit-control&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;&amp;amp;times;&amp;lt;/span&amp;gt;`;
+    content.innerHTML = renderFlow();
+    content.scrollTop = 0;
+    return;
+  }
+
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    if (state.mainLeaf === &amp;#x27;b1&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+      renderPathSubbar(subbar, &amp;#x27;Section B1&amp;#x27;, { subA:&amp;#x27;Sub Section&amp;#x27;, subDeep:&amp;#x27;Deeper Sub Item&amp;#x27; });
+    } else {
+      subbar.style.display = &amp;#x27;none&amp;#x27;;
+    }
+    content.innerHTML = renderMainLeaf();
+    content.scrollTop = 0;
+    return;
+  }
+
+  // contextual
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+    renderPathSubbar(subbar, &amp;#x27;Item 2.1&amp;#x27;, { cardA:&amp;#x27;Card A&amp;#x27;, deep:&amp;#x27;Deeper Item&amp;#x27; });
+  } else {
+    subbar.style.display = &amp;#x27;none&amp;#x27;;
+  }
+  content.innerHTML = renderContextualItem();
+  content.scrollTop = 0;
+}
+
+// Identical to desktop — the Back-vs-Breadcrumb rule itself never changes by breakpoint.
+// It works unchanged here because reopening the drawer still shows which item is selected,
+// giving the same orientation a persistent desktop sidebar provides for free.
+function renderPathSubbar(subbar, rootLabel, labels){
+  const path = [{ label: rootLabel, idx:-1 }, ...state.path.map((seg, i) =&amp;gt; ({ label: labels[seg], idx: i }))];
+  subbar.style.display = &amp;#x27;flex&amp;#x27;;
+  subbar.style.justifyContent = &amp;#x27;flex-start&amp;#x27;;
+  const ancestors = path.length - 1;
+  if (ancestors === 1) {
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;back-label&amp;quot; onclick=&amp;quot;popPathTo(-1)&amp;quot;&amp;gt;&amp;amp;larr; Volver a ${rootLabel}&amp;lt;/span&amp;gt;`;
+  } else {
+    subbar.innerHTML = path.map((c, i) =&amp;gt; {
+      const sep = i &amp;gt; 0 ? &amp;#x27;&amp;lt;span class=&amp;quot;crumb-sep&amp;quot;&amp;gt;/&amp;lt;/span&amp;gt;&amp;#x27; : &amp;#x27;&amp;#x27;;
+      const isLast = i === path.length - 1;
+      if (isLast) return sep + `&amp;lt;span class=&amp;quot;crumb-current&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+      return sep + `&amp;lt;span class=&amp;quot;crumb&amp;quot; onclick=&amp;quot;popPathTo(${c.idx})&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+    }).join(&amp;#x27;&amp;#x27;);
+  }
+}
+
+/* ---- Main state leaf content (identical to desktop) ---- */
+function renderMainLeaf(){
+  if (!state.mainLeaf) {
+    return `${tag(&amp;#x27;Main Sidebar&amp;#x27;)}&amp;lt;h1&amp;gt;Main view&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Tap the menu icon to open the drawer. Unlike desktop&amp;#x27;s persistent column, the sidebar here overlays the content and closes once you pick something with real content.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.mainLeaf === &amp;#x27;b1&amp;#x27;) {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Sub Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from an Accordion child in Main state. Same rule as desktop — the path header doesn&amp;#x27;t care about breakpoint, only how deep the content goes.&amp;lt;/p&amp;gt;
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag(&amp;#x27;1 ancestor: back-label (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Sub Section&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Section B1. Still just a back-label, same rule as desktop.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subDeep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      `;
+    }
+    return `
+      ${tag(&amp;#x27;Accordion child (Main state), root&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Section B1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A flat child revealed by the Accordion. Reopen the drawer any time to see it still highlighted here — same orientation a persistent sidebar gives for free.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Sub Section&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, same back-label to breadcrumb progression as desktop.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    `;
+  }
+
+  const labels = { &amp;#x27;section-a&amp;#x27;:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, b2:&amp;#x27;Section B2&amp;#x27;, b3:&amp;#x27;Section B3&amp;#x27; };
+  const isAccordionChild = [&amp;#x27;b2&amp;#x27;,&amp;#x27;b3&amp;#x27;].includes(state.mainLeaf);
+  return `
+    ${tag(isAccordionChild ? &amp;#x27;Accordion child (Main state)&amp;#x27; : &amp;#x27;Plain Main-state link&amp;#x27;)}
+    &amp;lt;h1&amp;gt;${labels[state.mainLeaf]}&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;${isAccordionChild
+      ? &amp;#x27;A flat child revealed by the Accordion, still Main state.&amp;#x27;
+      : &amp;#x27;A simple page with no children — no Accordion, no Contextual takeover needed.&amp;#x27;}&amp;lt;/p&amp;gt;
+  `;
+}
+
+/* ---- Contextual item content (identical to desktop) ---- */
+function renderContextualItem(){
+  if (state.activeItem === &amp;#x27;item-11&amp;#x27;) {
+    return `
+      ${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 1.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page inside the Contextual Sidebar. It also contains an action that starts a task flow.&amp;lt;/p&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;startFlow(&amp;#x27;Item 1.1&amp;#x27;)&amp;quot;&amp;gt;Start task flow&amp;lt;/button&amp;gt;
+    `;
+  }
+  if (state.activeItem === &amp;#x27;item-12&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 1.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Another plain browsing page. No further nesting.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.activeItem === &amp;#x27;item-22&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 2.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page alongside Item 2.1&amp;#x27;s drill-down.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27;) {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from Item 2.1. Full breadcrumb, exactly as desktop.&amp;lt;/p&amp;gt;
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag(&amp;#x27;1 ancestor: back-label (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Card A&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Item 2.1. Plain back-label, same rule as desktop.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;deep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      `;
+    }
+    return `
+      ${tag(&amp;#x27;Root level (no subbar)&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 2.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;No header needed yet — reopening the drawer shows this item still selected, same as desktop&amp;#x27;s always-visible sidebar. Tap a card to drill down.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;cardA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card A&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, demonstrating back-label first, then breadcrumb.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card B&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;A sibling destination that isn&amp;#x27;t wired up in this demo.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    `;
+  }
+  return &amp;#x27;&amp;#x27;;
+}
+
+/* ---- Full-Page Flow content — identical to desktop, already breakpoint-agnostic ---- */
+function renderFlow(){
+  const step = state.flow.step;
+  const total = 3;
+  const nav = () =&amp;gt; `
+    &amp;lt;div style=&amp;quot;margin-top:22px&amp;quot;&amp;gt;
+      &amp;lt;button class=&amp;quot;btn-link&amp;quot; onclick=&amp;quot;flowBack()&amp;quot;&amp;gt;${step===1?&amp;#x27;Cancelar&amp;#x27;:&amp;#x27;Atrás&amp;#x27;}&amp;lt;/button&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; style=&amp;quot;margin-left:12px&amp;quot; onclick=&amp;quot;flowNext()&amp;quot;&amp;gt;Continuar&amp;lt;/button&amp;gt;
+    &amp;lt;/div&amp;gt;`;
+
+  if (step === 1) {
+    return `${tag(&amp;#x27;Full-Page Flow, step 1 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 1&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Launched from &amp;quot;${state.flow.fromLabel}&amp;quot;. The hamburger stays available, unlike desktop, since the sidebar here is already hidden by default — opening it and picking a real destination discards this flow, same as tapping the X.&amp;lt;/p&amp;gt;${nav()}`;
+  }
+  if (step === 2) {
+    return `${tag(&amp;#x27;Full-Page Flow, step 2 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;&amp;quot;Atrás&amp;quot; here means &amp;quot;previous step,&amp;quot; not a navigational layer.&amp;lt;/p&amp;gt;${nav()}`;
+  }
+  return `
+    ${tag(&amp;#x27;Full-Page Flow, complete&amp;#x27;)}
+    &amp;lt;h1&amp;gt;Done&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Finishing returns to exactly where the flow was launched from, &amp;quot;${state.flow.fromLabel}&amp;quot;, not to Main.&amp;lt;/p&amp;gt;
+    &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;Finish&amp;lt;/button&amp;gt;
+  `;
+}
+
+/* ================= Init ================= */
+render();
+&amp;lt;/script&amp;gt;
+&amp;lt;/body&amp;gt;
+&amp;lt;/html&amp;gt;
+&quot;&gt;&lt;/iframe&gt;
+    &lt;/div&gt;
+    &lt;div class=&quot;device-wrap mobile-wrap&quot; id=&quot;wrap-mobile&quot;&gt;
+      &lt;iframe srcdoc=&quot;&amp;lt;!DOCTYPE html&amp;gt;
+&amp;lt;html lang=&amp;quot;en&amp;quot;&amp;gt;
+&amp;lt;head&amp;gt;
+&amp;lt;meta charset=&amp;quot;UTF-8&amp;quot;&amp;gt;
+&amp;lt;meta name=&amp;quot;viewport&amp;quot; content=&amp;quot;width=device-width, initial-scale=1&amp;quot;&amp;gt;
+&amp;lt;title&amp;gt;Navigation Pattern System: Mobile Reference Demo (Lo-Fi)&amp;lt;/title&amp;gt;
+&amp;lt;style&amp;gt;
+  :root {
+    --accent: #5463FF;
+    --accent-light: #DFE6FF;
+    --ink: #1E1E1E;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --bg-sidebar: #FAFAFA;
+    --bg-app: #FFFFFF;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, &amp;quot;Segoe UI&amp;quot;, Helvetica, Arial, sans-serif;
+    color: var(--ink);
+    background: #fff;
+    height: 100vh;
+    overflow: hidden;
+  }
+  .appbar {
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-app);
+  }
+  .hamburger { width:36px; height:36px; display:flex; align-items:center; justify-content:center; border-radius:8px; cursor:pointer; flex-shrink:0; }
+  .hamburger .bars { width:18px; height:12px; position:relative; }
+  .hamburger .bars span { position:absolute; left:0; width:100%; height:2px; background:var(--ink); }
+  .hamburger .bars span:nth-child(1){ top:0; }
+  .hamburger .bars span:nth-child(2){ top:5px; }
+  .hamburger .bars span:nth-child(3){ top:10px; }
+  .appbar .logo { display:flex; align-items:center; gap:8px; font-weight:700; font-size:15px; }
+  .appbar .logo .dot { width:20px; height:20px; border-radius:6px; background:var(--accent); }
+
+  .layout { position:relative; height: calc(100vh - 52px); overflow:hidden; }
+
+  .backdrop { display:none; position:absolute; inset:0; background:rgba(0,0,0,0.28); z-index:15; }
+  .backdrop.open { display:block; }
+
+  /* Near-full-width drawer, not the ~300px partial overlay used on tablet —
+     at mobile widths a partial overlay leaves too little peek of dimmed
+     content behind it to read as intentional, so the drawer takes almost
+     the whole screen, same interaction model as tablet either way. */
+  .sidebar {
+    position:absolute; top:0; left:0; bottom:0;
+    width: 86%;
+    max-width: 360px;
+    background: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 12px 0;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform .18s ease;
+    box-shadow: 2px 0 16px rgba(0,0,0,0.12);
+  }
+  .sidebar.open { transform: translateX(0); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 13px 16px;
+    font-size: 15px;
+    color: var(--ink);
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .nav-item.active { background: var(--accent-light); border-left-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .nav-item .chev { color: var(--muted); font-size: 11px; transition: transform .12s; }
+  .nav-item .chev.open { transform: rotate(180deg); }
+  .accordion-child { padding: 11px 16px 11px 34px; font-size: 14.5px; color: var(--ink); cursor:pointer; }
+  .accordion-child.active { color: var(--accent); font-weight:600; background: var(--accent-light); }
+
+  .group-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 14px 16px 6px; font-weight: 700; }
+  .group-label:first-child { padding-top: 4px; }
+
+  .back-control { display:flex; align-items:center; gap:8px; padding: 4px 16px 14px; font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+
+  .content-col { width:100%; height:100%; display:flex; flex-direction:column; min-width:0; }
+
+  .flow-subbar { display:none; align-items:center; gap:8px; height: 48px; padding: 0 16px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--ink); background: #fff; flex-shrink: 0; }
+  .flow-subbar .crumb { cursor:pointer; color: var(--accent); }
+  .flow-subbar .crumb-current { color: var(--ink); cursor:default; }
+  .flow-subbar .crumb-sep { color: var(--muted); }
+  .flow-subbar .back-label { cursor:pointer; }
+  .flow-subbar .exit-control { cursor:pointer; font-size: 22px; line-height:1; padding: 4px 6px; color: var(--muted); }
+
+  .content-scroll { flex:1; overflow-y:auto; padding: 24px 20px; }
+
+  .pattern-tag { display:inline-block; background: var(--accent-light); color: var(--accent); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; padding:4px 10px; border-radius:20px; margin-bottom:16px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin: 0 0 24px; }
+
+  .card { border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:12px; cursor:pointer; }
+  .card .title { font-weight:600; font-size:14px; margin-bottom:4px; }
+  .card .desc { font-size:13px; color:var(--muted); }
+
+  .row { display:flex; align-items:center; justify-content:space-between; padding: 12px 0; border-bottom: 1px solid var(--border); cursor:pointer; }
+  .row .value { font-size:13px; color:var(--muted); }
+
+  .btn { display:inline-block; padding:11px 18px; border-radius:8px; font-size:14px; font-weight:600; cursor:pointer; border:none; }
+  .btn-primary { background: var(--accent); color:#fff; }
+  .btn-link { color: var(--accent); font-weight:600; cursor:pointer; background:none; border:none; padding:0; font-size:14px; }
+
+  .step-indicator { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+  .step-dots { display:flex; gap:6px; }
+  .step-dot { width:22px; height:4px; border-radius:2px; background:var(--border); }
+  .step-dot.done { background: var(--accent); }
+  .step-label { font-size:12px; color:var(--muted); }
+&amp;lt;/style&amp;gt;
+&amp;lt;/head&amp;gt;
+&amp;lt;body&amp;gt;
+
+  &amp;lt;div class=&amp;quot;appbar&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;hamburger&amp;quot; id=&amp;quot;hamburger&amp;quot; onclick=&amp;quot;toggleDrawer()&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;bars&amp;quot;&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;span&amp;gt;&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;logo&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;dot&amp;quot;&amp;gt;&amp;lt;/div&amp;gt; Pattern Demo&amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
+
+  &amp;lt;div class=&amp;quot;layout&amp;quot;&amp;gt;
+    &amp;lt;div class=&amp;quot;backdrop&amp;quot; id=&amp;quot;backdrop&amp;quot; onclick=&amp;quot;closeDrawer()&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;sidebar&amp;quot; id=&amp;quot;sidebar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;div class=&amp;quot;content-col&amp;quot;&amp;gt;
+      &amp;lt;div class=&amp;quot;flow-subbar&amp;quot; id=&amp;quot;flowSubbar&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;content-scroll&amp;quot; id=&amp;quot;content&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;
+    &amp;lt;/div&amp;gt;
+  &amp;lt;/div&amp;gt;
+
+&amp;lt;script&amp;gt;
+/* ================= Dummy data model (identical to desktop) ================= */
+const MAIN_ITEMS = [
+  { id:&amp;#x27;section-a&amp;#x27;, label:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, type:&amp;#x27;link&amp;#x27; },
+  { id:&amp;#x27;section-b&amp;#x27;, label:&amp;#x27;Section B (Accordion)&amp;#x27;, type:&amp;#x27;accordion&amp;#x27;, children:[
+      { id:&amp;#x27;b1&amp;#x27;, label:&amp;#x27;Section B1&amp;#x27; },
+      { id:&amp;#x27;b2&amp;#x27;, label:&amp;#x27;Section B2&amp;#x27; },
+      { id:&amp;#x27;b3&amp;#x27;, label:&amp;#x27;Section B3&amp;#x27; },
+  ]},
+  { id:&amp;#x27;section-c&amp;#x27;, label:&amp;#x27;Section C (Contextual Sidebar)&amp;#x27;, type:&amp;#x27;contextual&amp;#x27; },
+];
+
+const CONTEXTUAL_GROUPS = [
+  { name:&amp;#x27;Group 1&amp;#x27;, items:[
+    { id:&amp;#x27;item-11&amp;#x27;, label:&amp;#x27;Item 1.1&amp;#x27; },
+    { id:&amp;#x27;item-12&amp;#x27;, label:&amp;#x27;Item 1.2&amp;#x27; },
+  ]},
+  { name:&amp;#x27;Group 2&amp;#x27;, items:[
+    { id:&amp;#x27;item-21&amp;#x27;, label:&amp;#x27;Item 2.1&amp;#x27; },
+    { id:&amp;#x27;item-22&amp;#x27;, label:&amp;#x27;Item 2.2&amp;#x27; },
+  ]},
+];
+
+/* ================= State (identical shape and rules to desktop) ================= */
+let state = {
+  view: &amp;#x27;main&amp;#x27;,
+  openAccordion: null,
+  mainLeaf: null,
+  activeItem: null,
+  path: [],
+  flow: null,
+};
+
+/* Same hamburger + overlay-drawer model as tablet — mobile has no room for a
+   push-navigation &amp;quot;list screen&amp;quot;, so the sidebar becomes a near-full-width
+   overlay instead of a partial one, but the interaction is otherwise identical:
+   tap to open, tap a leaf/item to auto-close, reopening still shows the
+   current selection highlighted (same orientation a persistent sidebar gives
+   for free on desktop). */
+let drawerOpen = false;
+function toggleDrawer(){ drawerOpen = !drawerOpen; renderDrawer(); }
+function openDrawer(){ drawerOpen = true; renderDrawer(); }
+function closeDrawer(){ drawerOpen = false; renderDrawer(); }
+function renderDrawer(){
+  document.getElementById(&amp;#x27;sidebar&amp;#x27;).classList.toggle(&amp;#x27;open&amp;#x27;, drawerOpen);
+  document.getElementById(&amp;#x27;backdrop&amp;#x27;).classList.toggle(&amp;#x27;open&amp;#x27;, drawerOpen);
+}
+
+/* ================= Navigation actions — identical rules to desktop/tablet ================= */
+function goMain(leaf){
+  state = { view:&amp;#x27;main&amp;#x27;, openAccordion: state.openAccordion, mainLeaf: leaf || null, activeItem:null, path:[], flow:null };
+  if (leaf) closeDrawer();
+  render();
+}
+function toggleAccordion(id){
+  state.openAccordion = state.openAccordion === id ? null : id;
+  state.mainLeaf = null;
+  render();
+}
+function goContextual(){
+  state = { view:&amp;#x27;contextual&amp;#x27;, openAccordion:null, mainLeaf:null, activeItem: null, path: [], flow:null };
+  openDrawer();
+  render();
+}
+function selectContextualItem(id){
+  // Reachable from the drawer even mid-flow (see render()) — reset view/flow
+  // explicitly, the same way goMain()/goContextual() already do, so picking a
+  // real destination always discards an in-progress flow, never leaves it
+  // silently stuck showing flow content for the wrong item.
+  state.view = &amp;#x27;contextual&amp;#x27;;
+  state.flow = null;
+  state.activeItem = id;
+  state.path = [];
+  closeDrawer();
+  render();
+}
+function pushPath(segment){ state.path.push(segment); render(); }
+function popPathTo(index){ state.path = state.path.slice(0, index + 1); render(); }
+
+function startFlow(fromLabel){
+  state.flow = { fromView: state.view, fromItem: state.activeItem, fromPath: [...state.path], step: 1, fromLabel };
+  state.view = &amp;#x27;flow&amp;#x27;;
+  closeDrawer();
+  render();
+}
+function exitFlow(){
+  const f = state.flow;
+  if (!f) { goMain(); return; }
+  state.view = f.fromView;
+  state.activeItem = f.fromItem;
+  state.path = f.fromPath;
+  state.flow = null;
+  render();
+}
+function flowNext(){ state.flow.step++; render(); }
+function flowBack(){
+  if (state.flow.step &amp;lt;= 1) { exitFlow(); return; }
+  state.flow.step--; render();
+}
+function stepProgress(step, total){
+  let dots = &amp;#x27;&amp;#x27;;
+  for (let i=1;i&amp;lt;=total;i++) dots += `&amp;lt;div class=&amp;quot;step-dot ${i&amp;lt;=step?&amp;#x27;done&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;lt;/div&amp;gt;`;
+  return `&amp;lt;div class=&amp;quot;step-indicator&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;step-dots&amp;quot;&amp;gt;${dots}&amp;lt;/div&amp;gt;&amp;lt;span class=&amp;quot;step-label&amp;quot;&amp;gt;Step ${step} of ${total}&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
+}
+function tag(text){ return `&amp;lt;div class=&amp;quot;pattern-tag&amp;quot;&amp;gt;${text}&amp;lt;/div&amp;gt;`; }
+
+/* ================= Drawer (sidebar) rendering — same list markup as desktop ================= */
+function renderSidebar(){
+  const sb = document.getElementById(&amp;#x27;sidebar&amp;#x27;);
+  if (state.view === &amp;#x27;flow&amp;#x27;) return;
+
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    let html = &amp;#x27;&amp;#x27;;
+    MAIN_ITEMS.forEach(it =&amp;gt; {
+      if (it.type === &amp;#x27;accordion&amp;#x27;) {
+        const isOpen = state.openAccordion === it.id;
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;toggleAccordion(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;span class=&amp;quot;chev ${isOpen?&amp;#x27;open&amp;#x27;:&amp;#x27;&amp;#x27;}&amp;quot;&amp;gt;&amp;amp;#9662;&amp;lt;/span&amp;gt;&amp;lt;/div&amp;gt;`;
+        if (isOpen) {
+          it.children.forEach(c =&amp;gt; {
+            const activeCls = state.mainLeaf === c.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+            html += `&amp;lt;div class=&amp;quot;accordion-child ${activeCls}&amp;quot; onclick=&amp;quot;event.stopPropagation(); goMain(&amp;#x27;${c.id}&amp;#x27;)&amp;quot;&amp;gt;${c.label}&amp;lt;/div&amp;gt;`;
+          });
+        }
+      } else if (it.type === &amp;#x27;contextual&amp;#x27;) {
+        html += `&amp;lt;div class=&amp;quot;nav-item&amp;quot; onclick=&amp;quot;goContextual()&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+      } else {
+        const activeCls = state.mainLeaf === it.id ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+        html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;goMain(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+      }
+    });
+    sb.innerHTML = html;
+    return;
+  }
+
+  // contextual
+  let html = `&amp;lt;div class=&amp;quot;back-control&amp;quot; onclick=&amp;quot;goMain()&amp;quot;&amp;gt;&amp;amp;larr; Volver a la app&amp;lt;/div&amp;gt;`;
+  CONTEXTUAL_GROUPS.forEach(g =&amp;gt; {
+    html += `&amp;lt;div class=&amp;quot;group-label&amp;quot;&amp;gt;${g.name}&amp;lt;/div&amp;gt;`;
+    g.items.forEach(it =&amp;gt; {
+      const activeCls = it.id === state.activeItem ? &amp;#x27;active&amp;#x27; : &amp;#x27;&amp;#x27;;
+      html += `&amp;lt;div class=&amp;quot;nav-item ${activeCls}&amp;quot; onclick=&amp;quot;selectContextualItem(&amp;#x27;${it.id}&amp;#x27;)&amp;quot;&amp;gt;${it.label}&amp;lt;/div&amp;gt;`;
+    });
+  });
+  sb.innerHTML = html;
+}
+
+/* ================= Content + subbar rendering — identical logic to desktop/tablet ================= */
+function render(){
+  renderSidebar();
+  renderDrawer();
+  const content = document.getElementById(&amp;#x27;content&amp;#x27;);
+  const subbar = document.getElementById(&amp;#x27;flowSubbar&amp;#x27;);
+
+  // Unlike desktop, the hamburger stays visible and tappable during a flow: the
+  // sidebar was already hidden-by-default here, so this is the same discovery
+  // affordance that&amp;#x27;s always present, not a reintroduced persistent sidebar.
+  // Opening the drawer and picking a real destination still works correctly —
+  // goMain()/selectContextualItem()/goContextual() all rebuild state with flow:null,
+  // so navigating away mid-flow safely discards it, the same as tapping X.
+  if (state.view === &amp;#x27;flow&amp;#x27;) {
+    subbar.style.display = &amp;#x27;flex&amp;#x27;;
+    subbar.style.justifyContent = &amp;#x27;flex-end&amp;#x27;;
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;exit-control&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;&amp;amp;times;&amp;lt;/span&amp;gt;`;
+    content.innerHTML = renderFlow();
+    content.scrollTop = 0;
+    return;
+  }
+
+  if (state.view === &amp;#x27;main&amp;#x27;) {
+    if (state.mainLeaf === &amp;#x27;b1&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+      renderPathSubbar(subbar, &amp;#x27;Section B1&amp;#x27;, { subA:&amp;#x27;Sub Section&amp;#x27;, subDeep:&amp;#x27;Deeper Sub Item&amp;#x27; });
+    } else {
+      subbar.style.display = &amp;#x27;none&amp;#x27;;
+    }
+    content.innerHTML = renderMainLeaf();
+    content.scrollTop = 0;
+    return;
+  }
+
+  // contextual
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27; &amp;amp;&amp;amp; state.path.length &amp;gt; 0) {
+    renderPathSubbar(subbar, &amp;#x27;Item 2.1&amp;#x27;, { cardA:&amp;#x27;Card A&amp;#x27;, deep:&amp;#x27;Deeper Item&amp;#x27; });
+  } else {
+    subbar.style.display = &amp;#x27;none&amp;#x27;;
+  }
+  content.innerHTML = renderContextualItem();
+  content.scrollTop = 0;
+}
+
+// Identical to desktop/tablet — the Back-vs-Breadcrumb rule itself never changes by
+// breakpoint. It works unchanged here because reopening the drawer still shows which
+// item is selected, the same orientation a persistent desktop sidebar gives for free.
+function renderPathSubbar(subbar, rootLabel, labels){
+  const path = [{ label: rootLabel, idx:-1 }, ...state.path.map((seg, i) =&amp;gt; ({ label: labels[seg], idx: i }))];
+  subbar.style.display = &amp;#x27;flex&amp;#x27;;
+  subbar.style.justifyContent = &amp;#x27;flex-start&amp;#x27;;
+  const ancestors = path.length - 1;
+  if (ancestors === 1) {
+    subbar.innerHTML = `&amp;lt;span class=&amp;quot;back-label&amp;quot; onclick=&amp;quot;popPathTo(-1)&amp;quot;&amp;gt;&amp;amp;larr; Volver a ${rootLabel}&amp;lt;/span&amp;gt;`;
+  } else {
+    subbar.innerHTML = path.map((c, i) =&amp;gt; {
+      const sep = i &amp;gt; 0 ? &amp;#x27;&amp;lt;span class=&amp;quot;crumb-sep&amp;quot;&amp;gt;/&amp;lt;/span&amp;gt;&amp;#x27; : &amp;#x27;&amp;#x27;;
+      const isLast = i === path.length - 1;
+      if (isLast) return sep + `&amp;lt;span class=&amp;quot;crumb-current&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+      return sep + `&amp;lt;span class=&amp;quot;crumb&amp;quot; onclick=&amp;quot;popPathTo(${c.idx})&amp;quot;&amp;gt;${c.label}&amp;lt;/span&amp;gt;`;
+    }).join(&amp;#x27;&amp;#x27;);
+  }
+}
+
+/* ---- Main state leaf content (identical to desktop/tablet) ---- */
+function renderMainLeaf(){
+  if (!state.mainLeaf) {
+    return `${tag(&amp;#x27;Main Sidebar&amp;#x27;)}&amp;lt;h1&amp;gt;Main view&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Tap the menu icon to open the drawer. Same hamburger + overlay model as tablet, just sized for a narrower screen.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.mainLeaf === &amp;#x27;b1&amp;#x27;) {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Sub Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from an Accordion child in Main state. Same rule as desktop — the path header doesn&amp;#x27;t care about breakpoint, only how deep the content goes.&amp;lt;/p&amp;gt;
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag(&amp;#x27;1 ancestor: back-label (Accordion child)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Sub Section&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Section B1. Still just a back-label, same rule as desktop.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subDeep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      `;
+    }
+    return `
+      ${tag(&amp;#x27;Accordion child (Main state), root&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Section B1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A flat child revealed by the Accordion. Reopen the drawer any time to see it still highlighted here, same orientation a persistent sidebar gives for free.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;subA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Sub Section&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, same back-label to breadcrumb progression as desktop.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    `;
+  }
+
+  const labels = { &amp;#x27;section-a&amp;#x27;:&amp;#x27;Section A (Plain Main-State Link)&amp;#x27;, b2:&amp;#x27;Section B2&amp;#x27;, b3:&amp;#x27;Section B3&amp;#x27; };
+  const isAccordionChild = [&amp;#x27;b2&amp;#x27;,&amp;#x27;b3&amp;#x27;].includes(state.mainLeaf);
+  return `
+    ${tag(isAccordionChild ? &amp;#x27;Accordion child (Main state)&amp;#x27; : &amp;#x27;Plain Main-state link&amp;#x27;)}
+    &amp;lt;h1&amp;gt;${labels[state.mainLeaf]}&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;${isAccordionChild
+      ? &amp;#x27;A flat child revealed by the Accordion, still Main state.&amp;#x27;
+      : &amp;#x27;A simple page with no children — no Accordion, no Contextual takeover needed.&amp;#x27;}&amp;lt;/p&amp;gt;
+  `;
+}
+
+/* ---- Contextual item content (identical to desktop/tablet) ---- */
+function renderContextualItem(){
+  if (state.activeItem === &amp;#x27;item-11&amp;#x27;) {
+    return `
+      ${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 1.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page inside the Contextual Sidebar. It also contains an action that starts a task flow.&amp;lt;/p&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;startFlow(&amp;#x27;Item 1.1&amp;#x27;)&amp;quot;&amp;gt;Start task flow&amp;lt;/button&amp;gt;
+    `;
+  }
+  if (state.activeItem === &amp;#x27;item-12&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 1.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Another plain browsing page. No further nesting.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.activeItem === &amp;#x27;item-22&amp;#x27;) {
+    return `${tag(&amp;#x27;Contextual layer, flat item&amp;#x27;)}&amp;lt;h1&amp;gt;Item 2.2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;A plain browsing page alongside Item 2.1&amp;#x27;s drill-down.&amp;lt;/p&amp;gt;`;
+  }
+  if (state.activeItem === &amp;#x27;item-21&amp;#x27;) {
+    const [l1, l2] = state.path;
+    if (l2) {
+      return `
+        ${tag(&amp;#x27;2 ancestors: breadcrumb (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Deeper Item&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Two layers deep from Item 2.1. Full breadcrumb, exactly as desktop.&amp;lt;/p&amp;gt;
+      `;
+    }
+    if (l1) {
+      return `
+        ${tag(&amp;#x27;1 ancestor: back-label (Contextual Sidebar item)&amp;#x27;)}
+        &amp;lt;h1&amp;gt;Card A&amp;lt;/h1&amp;gt;
+        &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;One layer deep from Item 2.1. Plain back-label, same rule as desktop.&amp;lt;/p&amp;gt;
+        &amp;lt;div class=&amp;quot;row&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;deep&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;label&amp;quot;&amp;gt;Go one layer deeper &amp;amp;rsaquo;&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      `;
+    }
+    return `
+      ${tag(&amp;#x27;Root level (no subbar)&amp;#x27;)}
+      &amp;lt;h1&amp;gt;Item 2.1&amp;lt;/h1&amp;gt;
+      &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;No header needed yet — reopening the drawer shows this item still selected, same as desktop&amp;#x27;s always-visible sidebar. Tap a card to drill down.&amp;lt;/p&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot; onclick=&amp;quot;pushPath(&amp;#x27;cardA&amp;#x27;)&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card A&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;Drills two layers deep, demonstrating back-label first, then breadcrumb.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+      &amp;lt;div class=&amp;quot;card&amp;quot;&amp;gt;&amp;lt;div class=&amp;quot;title&amp;quot;&amp;gt;Card B&amp;lt;/div&amp;gt;&amp;lt;div class=&amp;quot;desc&amp;quot;&amp;gt;A sibling destination that isn&amp;#x27;t wired up in this demo.&amp;lt;/div&amp;gt;&amp;lt;/div&amp;gt;
+    `;
+  }
+  return &amp;#x27;&amp;#x27;;
+}
+
+/* ---- Full-Page Flow content — identical to desktop, already breakpoint-agnostic ---- */
+function renderFlow(){
+  const step = state.flow.step;
+  const total = 3;
+  const nav = () =&amp;gt; `
+    &amp;lt;div style=&amp;quot;margin-top:20px&amp;quot;&amp;gt;
+      &amp;lt;button class=&amp;quot;btn-link&amp;quot; onclick=&amp;quot;flowBack()&amp;quot;&amp;gt;${step===1?&amp;#x27;Cancelar&amp;#x27;:&amp;#x27;Atrás&amp;#x27;}&amp;lt;/button&amp;gt;
+      &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; style=&amp;quot;margin-left:12px&amp;quot; onclick=&amp;quot;flowNext()&amp;quot;&amp;gt;Continuar&amp;lt;/button&amp;gt;
+    &amp;lt;/div&amp;gt;`;
+
+  if (step === 1) {
+    return `${tag(&amp;#x27;Full-Page Flow, step 1 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 1&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Launched from &amp;quot;${state.flow.fromLabel}&amp;quot;. The hamburger stays available, unlike desktop, since the sidebar here is already hidden by default — opening it and picking a real destination discards this flow, same as tapping the X.&amp;lt;/p&amp;gt;${nav()}`;
+  }
+  if (step === 2) {
+    return `${tag(&amp;#x27;Full-Page Flow, step 2 of 3&amp;#x27;)}${stepProgress(step,total)}&amp;lt;h1&amp;gt;Task flow, step 2&amp;lt;/h1&amp;gt;&amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;&amp;quot;Atrás&amp;quot; here means &amp;quot;previous step,&amp;quot; not a navigational layer.&amp;lt;/p&amp;gt;${nav()}`;
+  }
+  return `
+    ${tag(&amp;#x27;Full-Page Flow, complete&amp;#x27;)}
+    &amp;lt;h1&amp;gt;Done&amp;lt;/h1&amp;gt;
+    &amp;lt;p class=&amp;quot;subtitle&amp;quot;&amp;gt;Finishing returns to exactly where the flow was launched from, &amp;quot;${state.flow.fromLabel}&amp;quot;, not to Main.&amp;lt;/p&amp;gt;
+    &amp;lt;button class=&amp;quot;btn btn-primary&amp;quot; onclick=&amp;quot;exitFlow()&amp;quot;&amp;gt;Finish&amp;lt;/button&amp;gt;
+  `;
+}
+
+/* ================= Init ================= */
+render();
+&amp;lt;/script&amp;gt;
+&amp;lt;/body&amp;gt;
+&amp;lt;/html&amp;gt;
+&quot;&gt;&lt;/iframe&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+
+&lt;script&gt;
+function setMode(mode){
+  document.querySelectorAll(&#x27;.device-wrap&#x27;).forEach(el =&gt; el.classList.remove(&#x27;active&#x27;));
+  document.getElementById(&#x27;wrap-&#x27; + mode).classList.add(&#x27;active&#x27;);
+  document.querySelectorAll(&#x27;.seg-btn&#x27;).forEach(btn =&gt; btn.classList.toggle(&#x27;active&#x27;, btn.dataset.mode === mode));
+  positionThumb();
+}
+function positionThumb(){
+  const active = document.querySelector(&#x27;.seg-btn.active&#x27;);
+  const thumb = document.getElementById(&#x27;segThumb&#x27;);
+  thumb.style.left = active.offsetLeft + &#x27;px&#x27;;
+  thumb.style.width = active.offsetWidth + &#x27;px&#x27;;
+}
+window.addEventListener(&#x27;load&#x27;, positionThumb);
+window.addEventListener(&#x27;resize&#x27;, positionThumb);
 &lt;/script&gt;
 &lt;/body&gt;
 &lt;/html&gt;
