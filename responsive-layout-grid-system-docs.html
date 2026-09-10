@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Responsive Layout Grid System — Documentation</title>
+<style>
+  :root{
+    --accent:#5463FF; --accent-light:#DFE6FF; --ink:#1E1E1E; --muted:#6B7280; --border:#E5E7EB;
+    --content-border:#AFB6C2; --col-fill-alt:#E7E9EE; --bg:#F7F7F9;
+    --green:#1A7F3C; --green-light:#E7F6EC; --amber:#8A6D00; --amber-light:#FDECC8;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);background:#fff;line-height:1.55;}
+  a{color:var(--accent);}
+  code{background:#F0F1F5;border-radius:4px;padding:1px 6px;font-size:.9em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+
+  /* ---- Shell: sticky TOC + scrolling content ---- */
+  .shell{display:flex;max-width:1280px;margin:0 auto;}
+  .toc{width:260px;flex-shrink:0;position:sticky;top:0;height:100vh;overflow-y:auto;padding:40px 20px 40px 32px;border-right:1px solid var(--border);}
+  .toc .eyebrow{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;}
+  .toc h1{font-size:17px;margin:0 0 28px;line-height:1.35;}
+  .toc nav a{display:block;font-size:13px;color:var(--muted);text-decoration:none;padding:5px 0;border-left:2px solid transparent;padding-left:10px;margin-left:-11px;}
+  .toc nav a:hover{color:var(--ink);}
+  .toc nav .l2{padding-left:22px;font-size:12.5px;}
+  .toc nav .section{margin-top:16px;font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#B0B4BD;}
+  .toc nav .section:first-child{margin-top:0;}
+
+  .content{flex:1;min-width:0;padding:56px 64px 140px;}
+  .content section{margin-bottom:64px;scroll-margin-top:24px;}
+  .content section:last-child{margin-bottom:0;}
+  h2{font-size:26px;margin:0 0 6px;}
+  h3{font-size:16px;margin:32px 0 10px;}
+  h3:first-child{margin-top:0;}
+  .lede{font-size:15px;color:var(--muted);margin:0 0 28px;max-width:640px;}
+  p{font-size:14px;max-width:680px;}
+  .rule-why{background:var(--bg);border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:12px 16px;margin:14px 0;font-size:13.5px;max-width:680px;}
+  .rule-why b{color:var(--accent);}
+
+  /* ---- Tag chips reused from the prototype's own vocabulary ---- */
+  .tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.02em;}
+  .tag.x{background:var(--green-light);color:var(--green);}
+  .tag.y{background:var(--accent-light);color:var(--accent);}
+  .tag.z{background:var(--amber-light);color:var(--amber);}
+
+  /* ---- Spec table ---- */
+  table{border-collapse:collapse;width:100%;max-width:760px;font-size:13.5px;margin:12px 0 4px;}
+  th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;padding:8px 14px;border-bottom:1px solid var(--border);}
+  td{padding:10px 14px;border-bottom:1px solid var(--border);}
+  tr td:first-child, tr th:first-child{padding-left:0;}
+  .tier-desktop{color:var(--accent);font-weight:700;}
+  .tier-tablet{color:var(--green);font-weight:700;}
+  .tier-mobile{color:var(--amber);font-weight:700;}
+
+  /* ---- Static mini-diagrams (illustrative, not interactive) ---- */
+  .diagram{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:20px 24px;margin:14px 0 4px;max-width:760px;}
+
+  .diagram .cap{font-size:11px;color:var(--muted);margin-bottom:12px;}
+  .cols{display:flex;gap:6px;}
+  .col{height:34px;border-radius:4px;background:var(--col-fill-alt);flex:1;}
+  .col.used{background:var(--accent-light);}
+  .zone-box{border:1px solid var(--content-border);border-radius:8px;position:relative;padding:14px;font-size:11.5px;color:var(--muted);}
+  .zone-box .chip{position:absolute;top:-10px;left:10px;background:#6B7280;color:#fff;font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:20px;}
+  .zone-box.wide .chip{background:var(--green);}
+  .zone-box.narrow .chip{background:var(--accent);}
+  .row-flex{display:flex;gap:12px;}
+
+  /* ---- Do/Don't ---- */
+  .dd-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:760px;}
+  .dd{border-radius:10px;padding:14px 16px;font-size:13px;}
+  .dd.do{background:var(--green-light);}
+  .dd.dont{background:#FDECEC;}
+  .dd .label{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
+  .dd.do .label{color:var(--green);}
+  .dd.dont .label{color:#C0392B;}
+  .dd ul{margin:0;padding-left:18px;}
+  .dd li{margin-bottom:4px;}
+
+  .checklist{max-width:680px;}
+  .checklist li{font-size:13.5px;margin-bottom:8px;}
+
+  @media (max-width: 900px){
+    .toc{display:none;}
+    .content{padding:32px 24px 100px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="eyebrow">Bitso Business</div>
+    <h1>Responsive Layout Grid System</h1>
+    <nav>
+      <div class="section">Foundations</div>
+      <a href="#breakpoints">Breakpoints</a>
+      <a href="#content-types">Content types</a>
+      <a class="l2" href="#wide">Wide</a>
+      <a class="l2" href="#narrow">Narrow</a>
+      <a class="l2" href="#flow">Flow</a>
+      <a href="#compositions">Compositions</a>
+      <a class="l2" href="#main-aside">main + secondary</a>
+      <a href="#sidebar-rule">Sidebar / stepper width rule</a>
+
+      <div class="section">Rendering rules</div>
+      <a href="#flow-rules">Flow-specific rules</a>
+      <a href="#titles">Page titles</a>
+      <a href="#back-breadcrumb">Back / Breadcrumb</a>
+
+      <div class="section">Reference</div>
+      <a href="#prototype">Interactive prototype</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+
+    <section id="breakpoints">
+      <h2>Breakpoints</h2>
+      <p class="lede">Three tiers, each with its own column count, gutter, and margin. Mobile's 375px is a hard floor — the smallest device this system supports — not just a convenient round number.</p>
+      <table>
+        <thead><tr><th>Tier</th><th>Viewport width</th><th>Columns</th><th>Gutter</th><th>Margin</th><th>Cap</th></tr></thead>
+        <tbody>
+          <tr><td class="tier-desktop">Desktop</td><td>≥ 1280px</td><td>12</td><td>24px</td><td>48px</td><td>1440px — extra width becomes margin, not wider columns</td></tr>
+          <tr><td class="tier-tablet">Tablet</td><td>768–1279px</td><td>8</td><td>16px</td><td>24px</td><td>none</td></tr>
+          <tr><td class="tier-mobile">Mobile</td><td>375–767px</td><td>4</td><td>16px</td><td>16px</td><td>none — 375px is the explicit design floor</td></tr>
+        </tbody>
+      </table>
+      <div class="rule-why"><b>Why cap Desktop at 1440px:</b> without a cap, columns keep stretching on ultrawide monitors until content looks sparse and line lengths get unreadable. Capping the content track and pushing the extra width into margin keeps column proportions constant regardless of how wide the browser window gets.</div>
+    </section>
+
+    <section id="content-types">
+      <h2>Content types</h2>
+      <p class="lede">Every content type on Bitso Business generalizes into three buckets. Naming them by shape (not by feature) is what makes the rule scale — a new screen doesn't need a new rule, it needs a bucket assignment.</p>
+
+      <h3 id="wide"><span class="tag x">Wide</span> Fills 100% of its region</h3>
+      <p>Tables, KPI/card grids. Internally subdivides as needed (a 3-KPI row divides its own width into 3 equal parts) — that's a <em>local</em> nested grid, not the page grid repeating.</p>
+      <div class="rule-why"><b>"Fills 100%" can mean several sub-sections, not one solid block:</b> a KPI row is 3 separate tiles, each getting an equal share of the region's width — but those 3 shares still add up to 100% of it. Wide isn't "one big element"; it's "whatever's here, together, uses the full width" — a single table counts, and so does a row of cards that happen to divide that same width between them.</div>
+      <div class="diagram">
+        <div class="cap">Wide — 12 / 12</div>
+        <div class="cols">
+          <div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div>
+          <div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div>
+          <div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div>
+        </div>
+      </div>
+      <p><b>Examples:</b> Pagos (table + KPI row), Home's transaction table nested inside the main zone of a main+secondary composition.</p>
+
+      <h3 id="narrow"><span class="tag y">Narrow</span> A fixed 6 columns, full only on Mobile</h3>
+      <p>Forms, prose, option-row lists, toggle lists. Centered in its region, not pinned to the left margin.</p>
+      <div class="rule-why"><b>Careful — this isn't literally "half":</b> the rule is a <b>fixed span of 6 columns</b>, not "50% of the region." At Desktop (12 columns) that <em>is</em> half. At Tablet (8 columns) 6 columns is 75% of the region, not half. Mobile has only 4 columns total, so there's no room to constrain — Narrow content there just takes the full width. Document the exact rule, not the Desktop-only approximation.</div>
+      <div class="diagram">
+        <div class="cap">Narrow at Desktop — 6 / 12, centered</div>
+        <div class="cols">
+          <div class="col"></div><div class="col"></div><div class="col"></div>
+          <div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div>
+          <div class="col"></div><div class="col"></div><div class="col"></div>
+        </div>
+      </div>
+      <p><b>Examples:</b> deposit method picker, notification toggle list.</p>
+
+      <h3 id="flow"><span class="tag z">Flow</span> A modifier, not a content type</h3>
+      <p>A Full-Page Flow locks <b>one region-width for its entire duration</b>, chosen by whichever step needs the most — regardless of what bucket each individual step's own content would otherwise be. See <a href="#flow-rules">Flow-specific rules</a> for the full consistency and alignment logic.</p>
+      <p><b>Example:</b> Habilitar 2FA (4 steps, all happen to be Narrow-sized content, so the flow container stays a fixed 6/12 the entire time).</p>
+    </section>
+
+    <section id="compositions">
+      <h2>Compositions</h2>
+      <p class="lede">A layer <em>above</em> the content-type rule. A composition assigns zone widths first (e.g. main 8/12, secondary 4/12) — a pure width split, before anything is known about what's actually inside either zone. Each zone's own content then fills that zone completely, the same 100%-fill idea Wide follows at the page level, just scoped to a smaller region. Flow doesn't participate in a composition at all: it's a full-page takeover, not content sharing a layout with another zone.</p>
+
+      <h3 id="main-aside">main + secondary — 8/12 + 4/12</h3>
+      <div class="diagram">
+        <div class="row-flex">
+          <div class="zone-box wide" style="flex:8"><span class="chip">8 / 12 — main</span>Content nested here fills 100% of these 8 columns, not the page's 12.</div>
+          <div class="zone-box narrow" style="flex:4"><span class="chip">4 / 12 — secondary</span>This also fills 100% of its own 4 columns — a smaller zone, not shrunken content inside a bigger one.</div>
+        </div>
+      </div>
+      <p>Compositions like this only apply at Desktop. Below that, there simply isn't room for two columns of real content — Tablet and Mobile don't have the width to sit two zones side by side, so the zones stack full-width instead, one after another. The likely exception is an inline stack of cards at Tablet (not yet demonstrated in the prototype) — probably not a full two-column split, but not necessarily forced all the way down to single-column stacking either.</p>
+    </section>
+
+    <section id="sidebar-rule">
+      <h2>Sidebar / stepper width rule</h2>
+      <p class="lede">The nav sidebar (shown outside a flow) and the Full-Page Flow's vertical stepper (shown during a flow) occupy the <b>same slot</b> in the product — one region of fixed width that shows different content depending on context. That width is <b>not measured in columns</b> — it's a plain fixed pixel value, the same way a real sidebar in a real product just <em>has</em> a width. The only thing columns have to do with it is <em>how that fixed number gets calculated</em>: it borrows the grid's own per-column arithmetic so the result happens to feel visually consistent with the grid's rhythm, not because the sidebar owns any of the page's columns.</p>
+
+      <h3>Apart from the content's 12 columns, full stop</h3>
+      <p>The content area gets its own <b>full, independent 12/8/4-column grid</b>, with its own margins, inside whatever space remains once the sidebar's fixed width is subtracted from the viewport. Content never knows the sidebar exists — it isn't "12 minus something," it's just 12, computed fresh against whatever width is left.</p>
+      <div class="diagram">
+        <div class="cap">What this is NOT — the sidebar is not 3 columns, and content does not lose columns to it</div>
+        <div class="row-flex">
+          <div class="zone-box narrow" style="flex:3;padding-top:20px;font-size:11px;">sidebar<br>"3/12"?</div>
+          <div class="zone-box wide" style="flex:9;padding-top:20px;font-size:11px;">content — <b>not</b> 9/12</div>
+        </div>
+      </div>
+      <div class="diagram">
+        <div class="cap">What actually happens — a fixed-width sidebar (sized using column math, but not itself a column count) is subtracted first; content gets a fresh, full 12/8/4 grid in what's left</div>
+        <div class="row-flex">
+          <div class="zone-box narrow" style="flex:0 0 23%;padding-top:20px;font-size:11px;">sidebar — fixed width, own margin-less edge</div>
+          <div class="zone-box wide" style="flex:1;padding-top:20px;font-size:11px;">content's own full 12 / 12 grid, own margins, computed fresh in the remaining space</div>
+        </div>
+      </div>
+      <div class="rule-why"><b>Why derive the fixed width from column math at all:</b> the sidebar's width used to be an arbitrary constant (200px) unrelated to the grid, while a later fix sized the stepper using column arithmetic instead (~278px on Desktop) — leaving two different fixed widths for what is conceptually the same region, which visibly shifted the content area's start position when a screen moved in or out of a flow. Deriving both from the same calculation just means the content region's left edge never moves for that reason — that's the only job the column math is doing here. It's a sizing convenience, not a claim about what the sidebar "is."</div>
+    </section>
+
+    <section id="flow-rules">
+      <h2>Flow-specific rules</h2>
+      <h3>Flow Consistency Rule</h3>
+      <p>A Full-Page Flow's outer container picks <b>one column-span for its entire duration</b> — whichever step needs the most — computed once for all steps, not recalculated per step.</p>
+      <h3>Alignment fallback</h3>
+      <p>When every step's content genuinely fits that one shared span (the common case — e.g. a flow made entirely of Narrow steps), the container <b>centers</b>, same as a standalone Narrow card. When steps can't be unified under one span without forcing some steps into an ill-fitting width (a flow mixing Wide- and Narrow-sized steps, say), the container <b>left-aligns</b> instead, anchored to the page margin.</p>
+      <div class="rule-why"><b>Why left-align, not center, for the non-uniform case:</b> if the effective width genuinely differs step to step, a centered container's left edge would shift left and right as you move through the flow. Anchoring to the left margin keeps one edge stable even when the width itself has to vary.</div>
+    </section>
+
+    <section id="titles">
+      <h2>Page titles</h2>
+      <h3>One title per screen — Flow included</h3>
+      <p>The page title lives in exactly one place — a shared header slot (<code>#pageHeader</code>) — and every example sets its real title into that slot, including each step of a Full-Page Flow.</p>
+      <div class="rule-why"><b>Flow's title vs. flow-topbar's title — two different things:</b> the flow-specific top bar (see Flow-specific rules) shows the <i>flow's</i> name, e.g. "Habilitar autenticación de dos factores" — a fixed label for the whole task. <code>#pageHeader</code>, further down in the content area, shows the <i>current step's</i> own title, e.g. "Escanea el código QR" — and changes every step. Same slot Wide/Narrow use, so it lands at the same height as everywhere else.</div>
+      <h3>Page-level headings live above a composition, not inside one zone</h3>
+      <p>On a composed page like main + secondary, a page title/greeting (e.g. "Maria" on Home) is real content for the <em>whole page</em>, not specifically main's content.</p>
+      <div class="rule-why"><b>Why:</b> nesting the heading inside main's own zone pushed its content down while secondary's had nothing above it, so the two zones didn't start at the same height. Rendering it once, above the composition, keeps both zones' content starting at the same height.</div>
+      <h3>Title aligns to the content's own column position</h3>
+      <p>The title's left edge matches wherever the content below it actually starts — flush at the page margin for Wide content (which starts at the margin anyway), but shifted in to match a centered Narrow card's left edge.</p>
+      <h3>The title never jumps vertically</h3>
+      <p>The title sits at the same Y position whether or not the back-label/breadcrumb line above it (see below) has anything in it. The slot above the title is always reserved at a fixed height — hiding the back-label clears its text, not the box it sits in — so switching between an example that has one and one that doesn't never shifts the title up or down.</p>
+    </section>
+
+    <section id="back-breadcrumb">
+      <h2>Back / Breadcrumb</h2>
+      <p class="lede">Sourced directly from the <a href="https://mariamagnani-blanco.github.io/Design-Patterns-and-Documentation/" target="_blank" rel="noopener">Navigation Pattern System</a> — not a new rule invented for the grid, just placed correctly within it. Both live above the page title.</p>
+
+      <div class="diagram">
+        <div class="cap">1 ancestor — back-label, stacked tight above the title, no border or bar chrome</div>
+        <div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;">← Volver a Mis límites</div>
+        <div style="font-size:20px;font-weight:700;color:var(--ink);">Cuentas personales</div>
+      </div>
+      <div class="diagram">
+        <div class="cap">2+ ancestors — breadcrumb, same slot, same tight stack</div>
+        <div style="font-size:13px;font-weight:500;color:var(--muted);margin-bottom:6px;"><span style="cursor:pointer">Mis límites</span> / <span style="cursor:pointer">Cuentas personales</span> / <span>Editar límite diario</span></div>
+        <div style="font-size:20px;font-weight:700;color:var(--ink);">Editar límite diario</div>
+      </div>
+
+      <h3>Where it sits</h3>
+      <p>A new <code>#pathSubbar</code> element, inside <code>.content-area</code>, above the page title (<code>#pageHeader</code>) — separate from the title, not merged into it. Unlike the title, it does <em>not</em> follow the content's column position: it stays flush at the page's fixed margin always, the same horizontal spot regardless of what's below it. The title is content-relative; this is a navigation control, so it's page-relative instead — the two follow different rules on purpose.</p>
+      <div class="rule-why"><b>Why fixed to the margin, not the content:</b> a back-label or breadcrumb is a wayfinding control — it should be exactly where you expect it every time, not hopping horizontally depending on which example happens to be centered that day. The title earns its content-following behavior because it's labeling that specific piece of content; the back-label isn't labeling the content, it's telling you how to leave it.</div>
+      <div class="rule-why"><b>Spacing is deliberately asymmetric:</b> a bigger gap above the back-label/breadcrumb than below the title. The back-label and the title are two different pieces of information — how you got here vs. where you are — so they need visible separation from each other. But the title and its own body copy are one unit and should read that way, tight together, not as two disconnected blocks.</div>
+      <div class="rule-why"><b>This should be tokens, not ad hoc numbers:</b> there are really two different kinds of spacing at play here, and they should be named separately once real values exist. One outer token sets the vertical padding of the content column as a whole — how far the whole nav/title/content block sits below the app's topbar. Separately, two inner spacing tokens govern the relationships <em>within</em> that block: the gap between the back-label/breadcrumb and the title, and the gap between the title and where the real content starts. Same three-slot structure everywhere — a section-level padding token, plus spacing tokens for what comes right after it — not one-off values invented per element. Exact values aren't set yet; this is the shape the token set should take once they are.</div>
+      <div class="rule-why"><b>Mutually exclusive, never both:</b> a screen shows a back-label, a breadcrumb, or nothing in that slot — never two at once. The prototype's two new "Drill-down" examples under Narrow demonstrate this: the same slot, same position, different content depending on depth.</div>
+    </section>
+
+    <section id="prototype">
+      <h2>Interactive prototype</h2>
+      <p class="lede">Everything documented above is demonstrated live in the standalone prototype — the Desktop/Tablet/Mobile switcher and the bucket/example toolbars let you click through each rule directly.</p>
+      <p><a href="responsive-layout-grid-system.html" target="_blank" rel="noopener">Open the interactive prototype ↗</a></p>
+    </section>
+
+  </main>
+</div>
+
+</body>
+</html>

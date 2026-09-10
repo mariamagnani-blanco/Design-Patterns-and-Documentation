@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bitso Business — Responsive Layout Grid System (Prototipo)</title>
+<style>
+  :root{
+    --accent:#5463FF; --accent-light:#DFE6FF; --ink:#1E1E1E; --muted:#6B7280; --border:#E5E7EB;
+    --margin-fill:rgba(224,64,64,.16); --margin-line:#E04040; --col-fill:#C7CCD6; --col-fill-alt:#E7E9EE;
+    /* Content sits directly on the column backdrop now (no white fill), so its borders need
+       more contrast than --border (#E5E7EB) — that's nearly the same color as --col-fill-alt
+       (#E7E9EE) and disappears against it. This is for container edges, not the toolbar chrome. */
+    --content-border:#AFB6C2;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:var(--ink);background:#F2F3F5;}
+
+  /* ---- Toolbar ---- */
+  .toolbar{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+  .toolbar h1{font-size:15px;margin:0;font-weight:700;}
+  .presets{display:flex;gap:8px;}
+  .preset-btn{border:1px solid var(--border);background:#fff;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .preset-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .preset-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .readout{margin-left:auto;font-size:12.5px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;}
+  .readout b{color:var(--ink);}
+  .readout .tier-tag{background:var(--accent-light);color:var(--accent);font-weight:700;padding:3px 10px;border-radius:20px;font-size:11px;text-transform:uppercase;letter-spacing:.03em;}
+
+  /* ---- Canvas + resizable frame ---- */
+  .canvas{padding:48px 24px 100px;display:flex;justify-content:center;}
+  .frame-outer{position:relative;}
+  .frame{background:#fff;box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid var(--border);overflow:hidden;position:relative;transition:none;}
+  .resize-handle{position:absolute;top:0;right:-9px;width:18px;height:100%;cursor:ew-resize;display:flex;align-items:center;justify-content:center;z-index:10;}
+  .resize-handle::after{content:'';width:5px;height:52px;border-radius:4px;background:var(--muted);opacity:.5;}
+  .resize-handle:hover::after,.resize-handle.dragging::after{background:var(--accent);opacity:1;}
+  .frame-width-tag{position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:12px;font-weight:700;color:var(--muted);white-space:nowrap;}
+
+  /* ---- Dimmed app chrome (reference only, not interactive) ---- */
+  .app-shell{display:flex;flex-direction:column;height:100%;pointer-events:none;user-select:none;}
+  .topbar-dim{height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 20px;border-bottom:1px solid var(--border);opacity:.38;}
+  .topbar-dim .logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;}
+  .topbar-dim .logo .dot{width:18px;height:18px;border-radius:5px;background:var(--accent);}
+  .topbar-dim .right{display:flex;align-items:center;gap:14px;font-size:12px;color:var(--muted);}
+  .topbar-dim .hamburger{font-size:16px;}
+  .shell-body{display:flex;flex:1;min-height:0;}
+  .sidebar-dim{flex-shrink:0;border-right:1px solid var(--border);padding:16px 0;opacity:.32;}
+  .sidebar-dim .nav-item{padding:8px 18px;font-size:12.5px;}
+  .sidebar-dim .nav-item.hi{background:var(--accent-light);color:var(--accent);font-weight:600;}
+  .sidebar-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:0 18px 8px;}
+  .content-area{flex:1;min-width:0;min-height:0;padding:28px 0;overflow-y:auto;}
+  /* Not dimmed like topbar-dim/sidebar-dim — those never change regardless of what page you're
+     on, but this title IS the page's real content (it's set per-example below), so it isn't
+     "reference chrome to ignore" the way the app-level nav/topbar is. */
+  .page-header-dim{display:flex;justify-content:space-between;align-items:center;padding:0 var(--m,48px) 8px;}
+  .page-header-dim h2{font-size:20px;margin:0;}
+  /* Anchored to the page's own margin, not the content's column position — unlike the title,
+     this is a fixed navigation control, always in the same horizontal spot regardless of what
+     the content below happens to do. Back-label and breadcrumb share this one slot and never
+     show at the same time (see renderPathSubbar) — Full-Page Flow never shows either.
+     Height is reserved always, even when empty (hidePathSubbar clears the text, not the box),
+     so the title below never jumps up or down depending on whether this line has content. */
+  .path-subbar{padding:0 var(--m,48px);margin-bottom:22px;height:18px;line-height:18px;font-size:13px;font-weight:500;color:var(--muted);}
+  .path-subbar .back-label{cursor:pointer;}
+  .path-subbar .back-label:hover{color:var(--ink);}
+  .path-subbar .crumb{cursor:pointer;}
+  .path-subbar .crumb:hover{color:var(--ink);text-decoration:underline;}
+  .path-subbar .crumb-current{color:var(--muted);}
+  .path-subbar .crumb-sep{color:var(--muted);margin:0 6px;font-weight:400;}
+  .page-header-dim .btn-dim{background:var(--accent);color:#fff;border:none;border-radius:20px;padding:8px 18px;font-size:12.5px;font-weight:600;}
+
+  /* ---- Grid overlay (the actual subject of this artifact) ---- */
+  /* .app-shell disables pointer-events for the dimmed reference chrome (sidebar, topbar) —
+     but the grid-overlay is the real content being demonstrated, so it needs clicks back. */
+  .grid-overlay{position:relative;pointer-events:auto;}
+  .grid-row{display:flex;}
+  .margin-band{flex-shrink:0;background:var(--margin-fill);}
+  .col-track{flex:1;display:flex;}
+  .col-bar{height:340px;background:var(--col-fill);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#4B5262;}
+  .col-bar:nth-child(odd){background:var(--col-fill-alt);}
+  .gutter{flex-shrink:0;}
+  .dim-callout{display:flex;flex-shrink:0;flex-direction:column;align-items:center;padding-top:6px;}
+  .dim-callout .tick{width:1px;height:10px;background:var(--margin-line);}
+  .dim-callout .num{font-size:11px;font-weight:700;color:var(--margin-line);margin-top:2px;}
+  .bottom-margin{height:48px;background:var(--margin-fill);}
+
+  .note{max-width:640px;margin:28px auto 0;font-size:13px;color:var(--muted);text-align:center;line-height:1.6;}
+  .note code{background:#fff;border:1px solid var(--border);border-radius:4px;padding:1px 6px;}
+
+  /* ---- Scene toolbar ---- */
+  .scene-toolbar{position:sticky;top:53px;z-index:19;background:#FAFAFF;border-bottom:1px solid var(--border);padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .scene-toolbar .label{font-size:12px;color:var(--muted);font-weight:600;margin-right:4px;}
+  .scene-btn{border:1px solid var(--border);background:#fff;border-radius:20px;padding:6px 14px;font-size:12.5px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .scene-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .scene-btn.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+  .legend{background:#fff;border-bottom:1px solid var(--border);padding:10px 24px;display:flex;gap:22px;flex-wrap:wrap;font-size:11.5px;color:var(--ink);}
+  .legend b{font-weight:700;padding:1px 7px;border-radius:5px;margin-right:5px;}
+  .tag-x{background:#E7F6EC;color:#1A7F3C;}
+  .tag-y{background:var(--accent-light);color:var(--accent);}
+  .tag-z{background:#FDECC8;color:#8A6D00;}
+  .example-toolbar{background:#F5F5F9;border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .example-toolbar .label{font-size:11.5px;color:var(--muted);margin-right:2px;}
+  .example-btn{border:1px solid var(--border);background:#fff;border-radius:16px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink);}
+  .example-btn:hover{border-color:var(--accent);color:var(--accent);}
+  .example-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+  /* ---- Content scenes: zones laid out with real column math ---- */
+  .scene-row{display:flex;} /* align-items:stretch (the default) equalizes main/aside height */
+  .zone{position:relative;}
+  /* height:100% only takes effect when .zone has a definite height to fill — i.e. when it's a
+     stretched flex item in .scene-row (Main+Aside side by side). Elsewhere .zone's height is
+     auto, so this resolves to auto too and does nothing. This is what makes the shorter zone's
+     column backdrop keep going for the full row height instead of stopping at its own content. */
+  .zone-inner{position:relative;height:100%;}
+  .span-chip{position:absolute;top:-11px;left:0;background:#6B7280;color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;z-index:2;}
+  .span-chip.x{background:#1A7F3C;}
+  .span-chip.y{background:var(--accent);}
+  .zone-pad{padding:20px 0 0;position:relative;z-index:1;height:100%;}
+  .stack-gap{height:20px;}
+
+  .mock-illustration{width:100%;height:120px;border-radius:12px;background:linear-gradient(135deg,#8FE0C4,#5463FF);margin-bottom:16px;}
+  .mock-h2{font-size:20px;margin:0 0 8px;}
+  .mock-h3{font-size:15px;margin:0 0 12px;}
+  .mock-p{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 16px;}
+
+  .opt-row{border:1px solid var(--content-border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+  .opt-row .t{font-size:13.5px;font-weight:700;margin-bottom:4px;}
+  .opt-row .d{font-size:12px;color:var(--muted);line-height:1.5;}
+  .opt-row .right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .badge-pending{background:#FDECC8;color:#8A6D00;font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap;}
+  .chev{color:var(--muted);}
+
+  .mock-btn{width:100%;background:var(--accent-light);color:#9AA3D9;border:none;border-radius:8px;padding:12px;font-size:13px;font-weight:700;margin-top:6px;}
+  .mock-btn.on{background:var(--accent);color:#fff;}
+
+  .mock-card{border:1px solid var(--content-border);border-radius:12px;padding:18px 20px;margin-bottom:16px;}
+  .mock-card h4{font-size:13.5px;margin:0 0 12px;}
+  .mock-kpi-row{display:flex;}
+  .mock-kpi{border:1px solid var(--content-border);border-radius:8px;padding:12px 14px;}
+  .mock-kpi .l{font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .mock-kpi .v{font-size:16px;font-weight:700;}
+  .mock-table-empty{border:1px dashed var(--content-border);border-radius:10px;padding:36px 16px;text-align:center;font-size:12.5px;color:var(--muted);}
+  .aside-panel{border:1px solid var(--content-border);border-radius:12px;padding:20px;text-align:center;}
+  .aside-panel .icon{width:32px;height:32px;border-radius:50%;background:var(--accent-light);margin:0 auto 12px;display:flex;align-items:center;justify-content:center;color:var(--accent);font-size:14px;}
+  .aside-panel p{font-size:12px;color:var(--muted);line-height:1.55;margin:0 0 12px;}
+  .aside-panel .cta{color:var(--accent);font-size:12.5px;font-weight:700;}
+
+  .field{margin-bottom:0;}
+  .field label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;}
+  .field .box{border:1px solid var(--content-border);border-radius:8px;height:36px;}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--content-border);}
+  .toggle-row .label{font-size:13px;}
+  .toggle{width:34px;height:19px;border-radius:20px;background:#D1D5DB;position:relative;flex-shrink:0;}
+  .toggle::after{content:'';position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;}
+  .toggle.on{background:var(--accent);}
+  .toggle.on::after{left:17px;}
+  .group-label-sm{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;margin:18px 0 6px;}
+  .group-label-sm:first-child{margin-top:0;}
+
+  .data-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .data-table th{text-align:left;font-size:11px;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--content-border);}
+  .data-table td{padding:10px 10px;border-bottom:1px solid var(--content-border);}
+  .status-pill{font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:10px;}
+  .status-pill.ok{background:#E7F6EC;color:#1A7F3C;}
+  .status-pill.pending{background:#FDECC8;color:#8A6D00;}
+
+  .card-grid{display:flex;flex-wrap:wrap;}
+  .card-grid .g{border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+  .card-grid .g .l{font-size:11px;color:var(--muted);margin-bottom:8px;}
+  .card-grid .g .v{font-size:17px;font-weight:700;}
+
+  .qr-box{width:120px;height:120px;background:repeating-conic-gradient(#111 0% 25%, #fff 0% 50%) 0 0/14px 14px;border-radius:8px;margin:0 auto 18px;}
+  .success-icon{width:52px;height:52px;border-radius:50%;background:#E7F6EC;color:#1A7F3C;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 16px;}
+
+  /* ---- Full-Page Flow chrome — matches the Figma reference: flow-specific top bar
+     (title + X, replacing the business/MX/Soporte bar entirely) and a vertical numbered
+     stepper living where the nav sidebar normally sits, not dots inline in content. ---- */
+  .flow-topbar{height:56px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:0 24px;border-bottom:1px solid var(--border);}
+  .flow-topbar .title{font-size:14px;font-weight:600;color:var(--ink);}
+  .flow-topbar .x{width:28px;height:28px;border-radius:6px;background:var(--accent-light);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:14px;}
+  .flow-stepper-sidebar{flex-shrink:0;border-right:1px solid var(--border);padding:28px 24px;}
+  .fstep-span-tag{display:inline-block;background:var(--accent-light);color:var(--accent);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;margin-bottom:20px;}
+  .fstep-item{display:flex;gap:12px;position:relative;padding-bottom:30px;}
+  .fstep-item:last-child{padding-bottom:0;}
+  .fstep-connector{position:absolute;left:11px;top:24px;bottom:0;width:2px;background:var(--border);}
+  .fstep-connector.done{background:var(--accent);}
+  .fstep-circle{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;background:#E5E7EB;color:var(--muted);position:relative;z-index:1;}
+  .fstep-circle.current{background:#fff;border:2px solid var(--accent);color:var(--accent);}
+  .fstep-circle.done{background:var(--accent);color:#fff;}
+  .fstep-label{font-size:14px;color:var(--muted);padding-top:2px;}
+  .fstep-item.current .fstep-label{color:var(--ink);font-weight:700;}
+
+  /* Horizontal stepper — Tablet/Mobile variant, per the second Figma reference. Same
+     done/current/upcoming logic as the vertical one, just laid out as a row with the
+     connecting line split either side of each circle so adjacent segments line up. */
+  .flow-stepper-horizontal{display:flex;padding:20px var(--m,24px);border-bottom:1px solid var(--border);}
+  .hstep-item{flex:1;display:flex;flex-direction:column;align-items:center;text-align:center;padding:0 4px;min-width:0;}
+  .hstep-row{display:flex;align-items:center;width:100%;}
+  .hstep-line{flex:1;height:2px;background:var(--border);}
+  .hstep-line.done{background:var(--accent);}
+  .hstep-item:first-child .hstep-line.left{visibility:hidden;}
+  .hstep-item:last-child .hstep-line.right{visibility:hidden;}
+  .hstep-circle{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:#E5E7EB;color:var(--muted);}
+  .hstep-circle.current{background:#fff;border:2px solid var(--accent);color:var(--accent);}
+  .hstep-circle.done{background:var(--accent);color:#fff;}
+  .hstep-title{font-size:11.5px;font-weight:700;color:var(--muted);margin-top:8px;}
+  .hstep-desc{font-size:10px;color:var(--muted);margin-top:2px;line-height:1.3;}
+  .hstep-item.current .hstep-title{color:var(--ink);}
+
+  .flow-nav{display:flex;gap:12px;align-items:center;margin-top:24px;}
+  .flow-btn{border:none;border-radius:8px;padding:11px 20px;font-size:14px;font-weight:700;cursor:pointer;}
+  .flow-btn.secondary{background:var(--accent-light);color:#3341A8;}
+  .flow-btn.primary{background:var(--accent);color:#fff;}
+  .flow-btn.primary:disabled{background:#E5E7EB;color:#9AA3AE;cursor:not-allowed;}
+  .flow-btn.secondary:disabled{background:#F0F1F3;color:#B7BCC4;cursor:not-allowed;}
+
+  /* Columns behind the content, not just a legend above it: a full-height backdrop, numbered
+     at the top, that real content sits on top of. This only works because content itself has
+     no opaque fill (see .mock-card, .mock-kpi, .opt-row, .zone below) — an opaque box would
+     hide the backdrop exactly like it hid the old background-image version of this. */
+  .col-backdrop{position:absolute;top:0;left:0;right:0;bottom:0;display:flex;z-index:0;pointer-events:none;}
+  .col-band{border-radius:4px;background:var(--col-fill-alt);}
+  .col-band.used{background:var(--accent-light);}
+  .col-band span{display:block;padding:5px 0;text-align:center;font-size:10px;font-weight:700;color:#9AA3AE;}
+  .col-band.used span{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Responsive Layout Grid System — grid overlay</h1>
+  <div class="presets">
+    <button class="preset-btn" data-w="1440" onclick="setWidth(1440,this)">Desktop (1440)</button>
+    <button class="preset-btn" data-w="900" onclick="setWidth(900,this)">Tablet (900)</button>
+    <button class="preset-btn" data-w="375" onclick="setWidth(375,this)">Mobile (375)</button>
+  </div>
+  <div class="readout" id="readout"></div>
+</div>
+
+<div class="scene-toolbar">
+  <span class="label">Regla:</span>
+  <button class="scene-btn active" data-scene="grid" onclick="setScene('grid',this)">Grid only</button>
+  <button class="scene-btn" data-scene="wide" id="sceneBtnWide" onclick="setScene('wide',this)">Wide</button>
+  <button class="scene-btn" data-scene="narrow" id="sceneBtnNarrow" onclick="setScene('narrow',this)">Narrow</button>
+  <button class="scene-btn" data-scene="flow" onclick="setScene('flow',this)">Flow</button>
+</div>
+
+<div class="example-toolbar" id="exampleToolbar" style="display:none"></div>
+
+<div class="legend">
+  <span><b class="tag-x">Wide</b> fills 100% of its region (tables, KPI/card grids)</span>
+  <span><b class="tag-y">Narrow</b> ~half its region, full only on Mobile (forms, text, option-row lists, toggle lists)</span>
+  <span><b class="tag-z">Flow</b> a Full-Page Flow locks one region-width for every step, chosen by whichever step needs the most — centered when every step actually fits that width, left-aligned when they can't be unified (so the container doesn't jump side to side)</span>
+  <span style="color:var(--muted)">Compositions (Split-intro, Main+Aside) assign zone widths above this — X/Y then applies <i>inside</i> each zone, recursively.</span>
+</div>
+
+<div class="canvas">
+  <div class="frame-outer">
+    <div class="frame-width-tag" id="widthTag"></div>
+    <div class="frame" id="frame" style="width:1440px">
+      <div class="app-shell">
+        <div class="topbar-dim" id="topbarDim">
+          <div class="logo"><div class="dot"></div>business</div>
+          <div class="right" id="topRight">🌐 MX ▾&nbsp;&nbsp;🎧 Soporte&nbsp;&nbsp;●</div>
+        </div>
+        <div class="flow-topbar" id="flowTopbar" style="display:none">
+          <span class="title" id="flowTitle"></span>
+          <span class="x">✕</span>
+        </div>
+        <div class="flow-stepper-horizontal" id="flowStepperHorizontal" style="display:none"></div>
+        <div class="shell-body">
+          <div class="sidebar-dim" id="sidebarDim">
+            <div class="sidebar-label">Reference only — not interactive</div>
+            <div class="fstep-span-tag" id="sidebarSpanTag" style="margin:0 18px 12px"></div>
+            <div class="nav-item">Inicio</div>
+            <div class="nav-item">Saldos</div>
+            <div class="nav-item">Pagos</div>
+            <div class="nav-item hi">Preferencias</div>
+          </div>
+          <div class="flow-stepper-sidebar" id="flowStepperSidebar" style="display:none"></div>
+          <div class="content-area">
+            <div class="path-subbar" id="pathSubbar"></div>
+            <div class="page-header-dim" id="pageHeader"><h2>Page</h2></div>
+            <div class="grid-overlay" id="gridOverlay"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resize-handle" id="resizeHandle"></div>
+  </div>
+</div>
+
+<p class="note">Drag the handle on the right edge of the frame, or use the preset buttons. Watch the column count, gutter, and margin flip at <code>768px</code> and <code>1280px</code> — the same breakpoints the Navigation Pattern System uses for when the sidebar collapses to a drawer. Sidebar and topbar are dimmed and inert: reference chrome only, not part of what's being tested here.</p>
+
+<script>
+const MIN_W = 375, MAX_W = 1600;
+let scene = 'grid';
+let current = {};
+
+// A real screen has a fixed viewport height — content scrolls inside it, the viewport itself
+// doesn't grow or shrink to match whatever's on screen. The frame was auto-height, so it
+// visibly resized every time you switched scenes, examples, or even Flow steps (up to ~140px
+// of jump between two steps of the same flow). One fixed height per tier + overflow-y:auto
+// on .content-area fixes that — see its use in render().
+const FRAME_HEIGHT = {Desktop:900, Tablet:760, Mobile:700};
+
+function getSpec(width){
+  if(width>=1280) return {tier:'Desktop', columns:12, gutter:24, margin:48, cap:1440};
+  if(width>=768) return {tier:'Tablet', columns:8, gutter:16, margin:24, cap:null};
+  return {tier:'Mobile', columns:4, gutter:16, margin:16, cap:null};
+}
+
+// regionWidth is the space actually available to the CONTENT — the viewport minus whichever
+// left-hand column (nav sidebar, or the flow's stepper sidebar) is currently occupying space.
+// Bug this fixes: grid math was previously run against the full viewport width even when a
+// 200-260px sidebar was eating into it, so content overflowed past the right margin by
+// roughly the sidebar's width. Breakpoint tier itself still comes from the real viewport width.
+function computeMetrics(viewportWidth, regionWidth){
+  const spec = getSpec(viewportWidth);
+  const containerWidth = spec.cap ? Math.min(regionWidth, spec.cap) : regionWidth;
+  const extra = spec.cap && regionWidth > spec.cap ? (regionWidth - spec.cap)/2 : 0;
+  const margin = spec.margin + extra;
+  const trackWidth = containerWidth - 2*spec.margin;
+  const colWidth = (trackWidth - (spec.columns-1)*spec.gutter) / spec.columns;
+  return {spec, containerWidth, extra, margin, trackWidth, colWidth, gutter:spec.gutter, columns:spec.columns};
+}
+
+// spans a zone across n of the page's columns — the same colWidth/gutter driving the raw grid
+function spanWidth(n){ return n*current.colWidth + (n-1)*current.gutter; }
+// divides a LOCAL container (a zone, a card) into n equal parts — this is how grids nest
+function nUpWidth(containerWidth, n){ return (containerWidth - (n-1)*current.gutter)/n; }
+// The columns behind the content: n numbered tiles spanning the FULL HEIGHT of whatever they
+// sit behind (position:absolute; inset:0 in CSS), not just a strip above it. This only reads
+// as "behind" because the real content stacked on top (.zone-pad) has no opaque fill — see the
+// .mock-card/.mock-kpi/.opt-row/.zone rules, which deliberately have borders but no background.
+// usedFrom/usedTo mark which columns the content actually occupies (Wide always uses all of
+// them, since Wide fills 100% of its zone; Narrow only uses some, centered, and the rest stay
+// visible on either side).
+function columnBackdrop(n, usedFrom, usedTo){
+  const {colWidth, gutter} = current;
+  let bars = '';
+  for(let i=1;i<=n;i++){
+    const used = usedFrom==null || (i>=usedFrom && i<=usedTo);
+    bars += `<div class="col-band ${used?'used':''}" style="width:${colWidth}px"><span>${i}</span></div>`;
+    if(i<n) bars += `<div style="width:${gutter}px;flex-shrink:0"></div>`;
+  }
+  return `<div class="col-backdrop">${bars}</div>`;
+}
+
+// The nav sidebar and the flow stepper sidebar occupy the SAME slot in the real product —
+// one shows nav items, the other a stepper, but it's one region of fixed width, not two.
+// So both derive their width from the same formula: SIDEBAR_COLS column-widths' worth of the
+// full-viewport grid math (regionWidth == viewportWidth here, since `current` isn't set until
+// AFTER we know how much the sidebar takes).
+//
+// This is NOT a composition zone like Main+Aside's 8/12+4/12 — those two zones genuinely
+// share one 12-column total (8+4=12). The sidebar isn't part of the content's 12 at all; it's
+// a separate region outside that grid entirely. Borrowing the column-width arithmetic just
+// gives it a sensible, grid-consistent size — the content area still gets its own full,
+// untouched 12/8/4 columns in whatever space is left after the sidebar. If you called this
+// "3 of the page's 12 columns" while ALSO saying content still gets a full 12, that would
+// imply 15 columns total, which isn't the model — there is only ever one 12, and it's content's.
+const SIDEBAR_COLS = 3;
+function sidebarWidth(viewportWidth){
+  const m = computeMetrics(viewportWidth, viewportWidth);
+  return SIDEBAR_COLS*m.colWidth + (SIDEBAR_COLS-1)*m.gutter;
+}
+
+function render(width){
+  width = Math.max(MIN_W, Math.min(MAX_W, width));
+  const isFlow = scene === 'flow';
+  const previewSpec = getSpec(width); // just to know tier, before the region-width-adjusted metrics
+  const showsNavSidebar = !isFlow && previewSpec.tier==='Desktop';
+  const showsStepperSidebar = isFlow && previewSpec.tier==='Desktop';
+  // Tablet/Mobile: horizontal stepper instead — it's a full-width bar, not a side column,
+  // so unlike the vertical version it doesn't eat into regionWidth at all.
+  const showsStepperHorizontal = isFlow && previewSpec.tier!=='Desktop';
+  const showsSidebarSlot = showsNavSidebar || showsStepperSidebar;
+  const sbW = showsSidebarSlot ? sidebarWidth(width) : 0;
+  const regionWidth = width - sbW;
+
+  current = computeMetrics(width, regionWidth);
+  const spec = current.spec;
+  const frame = document.getElementById('frame');
+  frame.style.width = width+'px';
+  frame.style.height = FRAME_HEIGHT[spec.tier]+'px';
+  document.getElementById('widthTag').textContent = width+'px';
+
+  // At Mobile, Narrow has "no room to constrain" (see narrowRegionSpan) and renders full-width
+  // — identical to Wide's own 100%-fill behavior. The two buckets stop being visually
+  // distinguishable at this tier, so the toggle between them is hidden rather than offering a
+  // choice that doesn't actually change anything. Tablet keeps both: Narrow is still 6 of 8
+  // columns there, genuinely narrower than Wide's 12/12 — a real, visible difference.
+  const hideWideNarrowToggle = spec.tier === 'Mobile';
+  document.getElementById('sceneBtnWide').style.display = hideWideNarrowToggle ? 'none' : '';
+  document.getElementById('sceneBtnNarrow').style.display = hideWideNarrowToggle ? 'none' : '';
+
+  // Chrome per the Navigation Pattern System. At Desktop, a flow replaces the topbar
+  // entirely with flow title + X — there's no toggle on that topbar to preserve, so full
+  // replacement is correct there. At Tablet/Mobile, the normal topbar (and its hamburger)
+  // stays untouched during a flow instead: "the hamburger stays available... the same
+  // discovery affordance that's always present." The flow's title + X renders as an
+  // ADDITIONAL bar below it, not a replacement — opening the drawer and picking a real
+  // destination still discards the flow, same as tapping the X.
+  const hidesNormalTopbar = isFlow && previewSpec.tier==='Desktop';
+  document.getElementById('topbarDim').style.display = hidesNormalTopbar ? 'none' : 'flex';
+  document.getElementById('flowTopbar').style.display = isFlow ? 'flex' : 'none';
+  document.getElementById('sidebarDim').style.display = showsNavSidebar ? 'block' : 'none';
+  document.getElementById('sidebarDim').style.width = showsNavSidebar ? sbW+'px' : '';
+  document.getElementById('sidebarSpanTag').textContent = `~${SIDEBAR_COLS}-col width`;
+  document.getElementById('flowStepperSidebar').style.display = showsStepperSidebar ? 'block' : 'none';
+  document.getElementById('flowStepperSidebar').style.width = showsStepperSidebar ? sbW+'px' : '';
+  document.getElementById('flowStepperHorizontal').style.display = showsStepperHorizontal ? 'flex' : 'none';
+  document.getElementById('flowStepperHorizontal').style.setProperty('--m', current.margin+'px');
+  if(!hidesNormalTopbar){
+    document.getElementById('topRight').innerHTML = spec.tier==='Desktop'
+      ? '🌐 MX ▾&nbsp;&nbsp;🎧 Soporte&nbsp;&nbsp;●'
+      : '☰&nbsp;&nbsp;🌐 MX ▾&nbsp;&nbsp;●';
+  }
+  // Shown in Flow too now — the step's own title (e.g. "Descarga la app...") lives in this
+  // same shared slot instead of an inline heading inside the content, so it lands at the exact
+  // same height as every other scene's title. flow-topbar's own title is a different, higher
+  // level label (the flow's name, e.g. "Habilitar 2FA"), so there's no conflict between them.
+  document.getElementById('pageHeader').style.display = 'flex';
+  document.getElementById('pageHeader').style.setProperty('--m', current.margin+'px');
+
+  renderScene();
+
+  const capNote = spec.cap && width > spec.cap
+    ? ` · content capped at <b>${spec.cap}px</b>, extra ${Math.round(current.extra*2)}px becomes margin`
+    : (spec.cap ? ` · capped at <b>${spec.cap}px</b>` : '');
+  document.getElementById('readout').innerHTML = `
+    <span class="tier-tag">${spec.tier}</span>
+    <span><b>${width}px</b> viewport</span>
+    <span><b>${spec.columns}</b> columns</span>
+    <span><b>${spec.gutter}px</b> gutter</span>
+    <span><b>${Math.round(current.margin)}px</b> margin${capNote}</span>
+    <span><b>${Math.round(current.colWidth)}px</b> per column</span>
+  `;
+
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.toggle('active', parseInt(b.dataset.w)===width));
+}
+
+function setWidth(w, btn){
+  render(w);
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+}
+
+/* ================= Scenes ================= */
+// Each bucket (Wide, Narrow) holds several REAL content examples, picked via the example sub-toolbar.
+// Flow has one example — it's a modifier, not a content type, so there's nothing to switch between.
+let flowStep = 0; // 0 or 1 — which step of the Full-Page Flow example is showing
+let example = null;
+
+const EXAMPLES = {
+  wide:   [ {id:'table', label:'Table + KPIs (Pagos)'}, {id:'dashboard', label:'Nested in Main + Aside (Home)'}, {id:'tableonly', label:'Table only'} ],
+  narrow: [ {id:'optionsDeposit', label:'Option rows (Deposit methods)'}, {id:'toggles', label:'Settings list (toggles)'}, {id:'back', label:'Drill-down (Back)'}, {id:'breadcrumb', label:'Drill-down (Breadcrumb)'} ],
+  flow:   [ {id:'2fa', label:'Habilitar 2FA'} ]
+};
+
+const SCENE_RENDERERS = {
+  grid: renderGridScene,
+  flow: () => renderFlow2faExample(),
+  wide: () => ({table:renderWideTableExample, dashboard:renderWideDashboardExample, tableonly:renderWideTableOnlyExample}[example])(),
+  narrow: () => ({optionsDeposit:renderNarrowOptionsDepositExample, toggles:renderNarrowTogglesExample, back:renderNarrowBackExample, breadcrumb:renderNarrowBreadcrumbExample}[example])()
+};
+
+function renderScene(){
+  hidePathSubbar(); // reset — only the two drill-down examples turn it back on
+  SCENE_RENDERERS[scene]();
+  fillColumnBackdrops();
+  alignPageTitle();
+}
+
+// The title should start exactly where the content below it starts — not always at the page
+// margin. That's true for Wide (it fills the page, so its left edge IS the margin) but not for
+// a centered Narrow card, which starts further in. Measuring the actual rendered content's
+// left edge and matching the title to it works for both, and for Flow's left-aligned fallback
+// too, without hardcoding per-scene offsets that would drift out of sync with the real layout.
+// Only the title follows the content's column position — the back-label/breadcrumb bar is a
+// fixed navigation control and stays flush at the page margin (its plain CSS padding) no
+// matter where the content below happens to sit. See .path-subbar for that.
+function alignPageTitle(){
+  const zone = document.querySelector('#gridOverlay .zone');
+  const header = document.getElementById('pageHeader');
+  if(!zone){ header.style.paddingLeft = ''; return; }
+  // Measured from header's OWN left edge (with its padding reset first), not the frame's —
+  // header and gridOverlay are siblings inside the same .content-area, so this correctly
+  // nets out whatever the sidebar contributes to both, instead of double-counting it.
+  header.style.paddingLeft = '0px';
+  const offset = Math.round(zone.getBoundingClientRect().left - header.getBoundingClientRect().left);
+  header.style.paddingLeft = offset + 'px';
+}
+
+// Columns should reach the bottom of the (now fixed-height) frame, not stop wherever content
+// happens to end — a design-tool grid convention, and also what makes a Flow's container a
+// stable height across steps (see flowRegionShell / renderFlow2faExample's CTA note below).
+// Side-by-side zones (.scene-row, e.g. Main+Aside) share ONE target height so they stay equal
+// to each other, not just each independently reaching the viewport. Stacked/standalone zones
+// don't share a row, so only the LAST one in the flow of content is extended — otherwise every
+// stacked section would inflate to the full viewport height, which nothing asked for.
+function fillColumnBackdrops(){
+  const contentArea = document.querySelector('.content-area');
+  const gridOverlay = document.getElementById('gridOverlay');
+  const caRect = contentArea.getBoundingClientRect();
+
+  const targets = Array.from(gridOverlay.querySelectorAll('.zone-inner, .backdrop-row'));
+  if(!targets.length) return;
+
+  const rowGroups = new Map();
+  const standalone = [];
+  targets.forEach(el=>{
+    const row = el.closest('.scene-row');
+    if(row){
+      if(!rowGroups.has(row)) rowGroups.set(row, []);
+      rowGroups.get(row).push(el);
+    } else {
+      standalone.push(el);
+    }
+  });
+
+  // Measured from each row/element's OWN top, not gridOverlay's — there's a 20px
+  // padding-top between them (see sceneShell), and using the wrong reference point
+  // was making side-by-side zones (Main+Aside) reach 20px further than a standalone
+  // zone would for the exact same available space.
+  rowGroups.forEach((group, row)=>{
+    const rowTop = row.getBoundingClientRect().top;
+    const targetH = Math.max(caRect.bottom - rowTop, ...group.map(el=>el.scrollHeight));
+    group.forEach(el=>{ el.style.height = targetH+'px'; });
+  });
+
+  if(standalone.length){
+    const last = standalone[standalone.length-1];
+    const r = last.getBoundingClientRect();
+    last.style.height = Math.max(last.scrollHeight, caRect.bottom - r.top) + 'px';
+  }
+}
+
+function renderExampleToolbar(){
+  const bar = document.getElementById('exampleToolbar');
+  const list = EXAMPLES[scene];
+  if(!list){ bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  bar.innerHTML = `<span class="label">Ejemplo real:</span>` + list.map(ex =>
+    `<button class="example-btn ${example===ex.id?'active':''}" onclick="setExample('${ex.id}')">${ex.label}</button>`
+  ).join('');
+}
+
+function setScene(s, btn){
+  scene = s;
+  flowStep = 0;
+  example = EXAMPLES[s] ? EXAMPLES[s][0].id : null;
+  document.querySelectorAll('.scene-btn').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderExampleToolbar();
+  render(parseInt(document.getElementById('frame').style.width, 10));
+}
+
+function setExample(e){
+  example = e;
+  flowStep = 0; // different flow examples have different step counts — always start clean
+  renderExampleToolbar();
+  render(parseInt(document.getElementById('frame').style.width, 10));
+}
+
+function flowGo(step){ flowStep = step; renderScene(); }
+
+function optRow(title, desc, badge){
+  const badgeHtml = badge===false ? '' : `<span class="badge-pending">Pendiente</span>`;
+  return `<div class="opt-row"><div><div class="t">${title}</div>${desc?`<div class="d">${desc}</div>`:''}</div><div class="right">${badgeHtml}<span class="chev">›</span></div></div>`;
+}
+
+// bucket: 'x' (Wide), 'y' (Narrow), or '' (composition-assigned zone width — X/Y not yet applied)
+// cols: how many of the page's columns this zone spans — draws that many column tiles behind
+// the content, full height, always visible (the content itself has no opaque fill to hide them).
+function zoneWrap(widthPx, label, innerHtml, bucket, cols){
+  const backdrop = cols ? columnBackdrop(cols) : '';
+  return `<div class="zone" style="width:${widthPx}px">
+    <span class="span-chip ${bucket||''}">${label}</span>
+    <div class="zone-inner">${backdrop}${innerHtml}</div>
+  </div>`;
+}
+function bucketLabel(letter, name, spanText){ return `${name} (${spanText})`; }
+
+function sceneShell(rowsHtml){
+  document.getElementById('gridOverlay').innerHTML = `<div class="grid-row"><div class="margin-band" style="width:${current.margin}px"></div><div style="flex:1;min-width:0;padding-top:20px">${rowsHtml}</div><div class="margin-band" style="width:${current.margin}px"></div></div>`;
+}
+
+// One page title, set here — not a second one duplicated inside the example's own content.
+// Every Wide/Narrow example calls this instead of rendering its own <h2>, so the title always
+// lands at the same height and the content below it starts at the same height too, regardless
+// of which example is showing.
+function setPageTitle(text){
+  document.querySelector('#pageHeader h2').textContent = text;
+}
+
+// Back / Breadcrumb — a content-area rule, mechanical, not a per-screen judgment call:
+// exactly one ancestor of depth gets a plain "← Volver a X" back-label; two or more get a
+// full breadcrumb trail (every crumb but the current one is clickable, jumping straight to
+// that depth instead of stepping back one hop at a time). At depth 1 a breadcrumb and a back
+// button would do the same job, so the rule picks the simpler control until there's an
+// intermediate layer actually worth skipping to. This never shows during a Full-Page Flow —
+// a flow exits with X instead (see flow-topbar) — hidePathSubbar() is called before every
+// scene renders, and only these two drill-down examples turn it back on.
+function hidePathSubbar(){
+  // Clears the text, not the box — the line stays reserved so the title below it never
+  // shifts up when this is empty vs down when it's populated.
+  document.getElementById('pathSubbar').innerHTML = '';
+}
+function renderPathSubbar(rootLabel, crumbs){
+  const bar = document.getElementById('pathSubbar');
+  if(crumbs.length === 1){
+    bar.innerHTML = `<span class="back-label">← Volver a ${rootLabel}</span>`;
+    return;
+  }
+  const path = [rootLabel, ...crumbs.slice(0, -1)];
+  const current = crumbs[crumbs.length-1];
+  bar.innerHTML = path.map(label => `<span class="crumb">${label}</span><span class="crumb-sep">/</span>`).join('')
+    + `<span class="crumb-current">${current}</span>`;
+}
+
+function renderGridScene(){
+  setPageTitle('Page'); // no specific content type here, so the generic placeholder stands
+  const {spec, margin, colWidth, gutter} = current;
+  let cols='', colsCallout='';
+  for(let i=1;i<=spec.columns;i++){
+    cols += `<div class="col-bar" style="width:${colWidth}px">${i}</div>`;
+    colsCallout += `<div style="width:${colWidth}px"></div>`;
+    if(i<spec.columns){
+      cols += `<div class="gutter" style="width:${gutter}px"></div>`;
+      colsCallout += i===1
+        ? `<div class="dim-callout" style="width:${gutter}px"><div class="tick"></div><div class="num">${gutter}</div></div>`
+        : `<div style="width:${gutter}px"></div>`;
+    }
+  }
+  document.getElementById('gridOverlay').innerHTML = `
+    <div class="grid-row">
+      <div class="margin-band" style="width:${margin}px"></div>
+      <div class="col-track">${cols}</div>
+      <div class="margin-band" style="width:${margin}px"></div>
+    </div>
+    <div class="grid-row" style="align-items:flex-start">
+      <div class="dim-callout" style="width:${margin}px"><div class="tick"></div><div class="num">${Math.round(margin)}</div></div>
+      <div class="col-track">${colsCallout}</div>
+      <div class="dim-callout" style="width:${margin}px"><div class="tick"></div><div class="num">${Math.round(margin)}</div></div>
+    </div>
+    <div class="grid-row">
+      <div class="bottom-margin" style="width:${margin}px"></div>
+      <div class="bottom-margin" style="flex:1"></div>
+      <div class="bottom-margin" style="width:${margin}px"></div>
+    </div>
+  `;
+}
+
+// Narrow: the shared span every "everything else" example uses. Same numbers regardless
+// of what's actually inside (form, prose, option list, toggle list) — that convergence is
+// the whole point. The full track's guides are always drawn as a backdrop behind the zone,
+// so unused columns stay visible instead of disappearing when content doesn't need them —
+// and the zone is centered in that backdrop, not pinned to the left margin.
+function narrowRegionSpan(note){
+  const {spec, columns} = current;
+  const w = spec.tier==='Mobile' ? current.trackWidth : spanWidth(6);
+  const label = spec.tier==='Mobile'
+    ? bucketLabel('','Narrow', `${columns} / ${columns} — full, no room to constrain`)
+    : bucketLabel('','Narrow', `6 / ${columns}${note ? ' — '+note : ''}`);
+  return {w, label};
+}
+function narrowRegionShell(innerHtml, note){
+  const {trackWidth, columns} = current;
+  const {w, label} = narrowRegionSpan(note);
+  const usedSpan = columns===4 ? 4 : 6; // Mobile has no room to constrain, so all 4 are "used"
+  const usedStartCol = Math.floor((columns - usedSpan)/2) + 1; // centered, matches the layout below
+  const backdrop = columnBackdrop(columns, usedStartCol, usedStartCol+usedSpan-1);
+  // No background on .zone — the content sits directly on the backdrop, so the columns it
+  // occupies stay visible (tinted) behind it, same as the unused columns on either side.
+  const zoneHtml = `<div class="zone" style="width:${w}px">
+      <span class="span-chip y">${label}</span>
+      <div class="zone-pad">${innerHtml}</div>
+    </div>`;
+  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:center;position:relative;z-index:1">${zoneHtml}</div></div>`);
+}
+
+/* ---- Flow — the modifier, demonstrated with Habilitar 2FA. Stepper chrome matches the
+   Figma reference: a vertical numbered list living where the nav sidebar sits (not dots
+   inline in content), with a flow-specific top bar (title + X) replacing the app's own. ---- */
+
+// Flow Consistency Rule: the outer container picks ONE column-span for the whole flow —
+// whichever step needs the most — same as Narrow's fixed span. When every step's content
+// genuinely fits that one span (stepSpans all equal), center it, matching Narrow. When it
+// can't be unified (a flow mixing Wide- and Narrow-sized steps, say), centering would shift
+// the container left/right as its effective width changes step to step — so it left-aligns
+// instead, anchored to the page margin, so nothing jumps as you move between steps.
+// Renders an off-screen copy of each step's body at the real content width and returns the
+// tallest one. Reserving that much space for the content — instead of letting the CTA row
+// follow immediately after whatever a given step happens to need — is what keeps the CTA at
+// one fixed position across steps without shoving it all the way down to the bottom of the
+// (now viewport-tall) column backdrop, which just looked too low.
+function measureMaxHtmlHeight(htmlArr, widthPx){
+  const probe = document.createElement('div');
+  probe.style.cssText = `position:fixed;top:0;left:-99999px;visibility:hidden;width:${widthPx}px;`;
+  document.body.appendChild(probe);
+  let max = 0;
+  htmlArr.forEach(html=>{ probe.innerHTML = html; max = Math.max(max, probe.scrollHeight); });
+  document.body.removeChild(probe);
+  return max;
+}
+function flowRegionShell(stepSpans, stepBodies, note){
+  const {trackWidth, columns, spec} = current;
+  const uniform = stepSpans.every(s => s === stepSpans[0]);
+  const maxSpan = Math.min(Math.max(...stepSpans), columns);
+  const full = spec.tier==='Mobile' || maxSpan>=columns; // Mobile has no room to constrain either
+  const usedSpan = full ? columns : maxSpan;
+  const w = full ? trackWidth : spanWidth(usedSpan);
+  const label = full
+    ? bucketLabel('','Flow', `${columns} / ${columns}${note ? ' — '+note : ''}`)
+    : bucketLabel('','Flow', `${usedSpan} / ${columns}${note ? ' — '+note : ''}`);
+  const usedStartCol = uniform ? Math.floor((columns - usedSpan)/2) + 1 : 1;
+  const backdrop = columnBackdrop(columns, usedStartCol, usedStartCol+usedSpan-1);
+  const maxContentH = measureMaxHtmlHeight(stepBodies, w);
+  const innerHtml = `<div style="min-height:${maxContentH}px">${stepBodies[flowStep]}</div>${flowNavButtons(stepBodies.length)}`;
+  const zoneHtml = `<div class="zone" style="width:${w}px">
+      <span class="span-chip y">${label}</span>
+      <div class="zone-pad">${innerHtml}</div>
+    </div>`;
+  const align = uniform ? 'center' : 'flex-start';
+  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:${align};position:relative;z-index:1">${zoneHtml}</div></div>`);
+}
+function renderFlowStepperSidebar(stepNames, currentIndex){
+  const items = stepNames.map((name,i)=>{
+    const isDone = i < currentIndex, isCurrent = i === currentIndex;
+    const circleClass = isDone ? 'done' : isCurrent ? 'current' : '';
+    const connectorClass = i <= currentIndex ? 'done' : '';
+    const isLast = i === stepNames.length-1;
+    return `<div class="fstep-item ${isCurrent?'current':''}">
+      <div class="fstep-circle ${circleClass}">${isDone ? '✓' : i+1}</div>
+      ${isLast ? '' : `<div class="fstep-connector ${connectorClass}"></div>`}
+      <div class="fstep-label">${name}</div>
+    </div>`;
+  }).join('');
+  const tag = `<div class="fstep-span-tag">~${SIDEBAR_COLS}-col width</div>`;
+  document.getElementById('flowStepperSidebar').innerHTML = tag + items;
+}
+// Tablet/Mobile variant of the same stepper, per the second Figma reference — a horizontal
+// row with the connecting line split either side of each circle, title + short description
+// underneath. Same done/current/upcoming logic as the vertical version, just laid out flat.
+function renderFlowStepperHorizontal(steps, currentIndex){
+  document.getElementById('flowStepperHorizontal').innerHTML = steps.map((s,i)=>{
+    const isDone = i < currentIndex, isCurrent = i === currentIndex;
+    const circleClass = isDone ? 'done' : isCurrent ? 'current' : '';
+    const leftDone = i>0 && (i-1) < currentIndex;
+    const rightDone = i < currentIndex;
+    return `<div class="hstep-item ${isCurrent?'current':''}">
+      <div class="hstep-row">
+        <div class="hstep-line left ${leftDone?'done':''}"></div>
+        <div class="hstep-circle ${circleClass}">${isDone ? '✓' : i+1}</div>
+        <div class="hstep-line right ${rightDone?'done':''}"></div>
+      </div>
+      <div class="hstep-title">${s.title}</div>
+      <div class="hstep-desc">${s.desc}</div>
+    </div>`;
+  }).join('');
+}
+
+function flowNavButtons(total){
+  return `<div class="flow-nav">
+    <button class="flow-btn secondary" onclick="flowGo(${flowStep-1})" ${flowStep===0?'disabled':''}>Atrás</button>
+    <button class="flow-btn primary" onclick="flowGo(${flowStep+1})" ${flowStep===total-1?'disabled':''}>${flowStep===total-1?'Finalizar':'Continuar'}</button>
+  </div>`;
+}
+
+// Habilitar 2FA — 4 steps, all Narrow. Same fixed flow container the whole way through
+// regardless of step content — the "every step happens to be the same bucket" case.
+function renderFlow2faExample(){
+  document.getElementById('flowTitle').textContent = 'Habilitar autenticación de dos factores';
+  const stepMeta = [
+    {title:'Descargar app', desc:'Instala tu app de autenticación'},
+    {title:'Proteger cuenta', desc:'Activa una capa extra de seguridad'},
+    {title:'Escanear código', desc:'Vincula tu app con tu cuenta'},
+    {title:'Confirmación', desc:'Tu cuenta está protegida'}
+  ];
+  renderFlowStepperSidebar(stepMeta.map(s=>s.title), flowStep);
+  renderFlowStepperHorizontal(stepMeta, flowStep);
+  // Each step's own descriptive title goes into the shared #pageHeader slot — same as every
+  // other scene — instead of an inline <h2>, so it lands at the same height as Wide/Narrow's
+  // title. stepMeta's shorter .title strings are a separate thing, just the stepper's own labels.
+  const stepTitles = [
+    'Descarga la app de autenticación de dos factores',
+    'Protege mejor tu cuenta con 2FA',
+    'Escanea el código QR',
+    '¡2FA activado!'
+  ];
+  setPageTitle(stepTitles[flowStep]);
+  const steps = [
+    `<p class="mock-p">Necesitas descargar una de estas apps desde tu tienda de aplicaciones. Luego, vuelve aquí para continuar.</p>
+     <p style="margin-bottom:8px"><span style="color:var(--accent);font-weight:700;font-size:13px">Authy ↗</span></p>
+     <p style="margin-bottom:8px"><span style="color:var(--accent);font-weight:700;font-size:13px">Google Authenticator (iOS) ↗</span></p>
+     <p><span style="color:var(--accent);font-weight:700;font-size:13px">Google Authenticator (Android) ↗</span></p>`,
+    `<p class="mock-p">La autenticación de dos factores agrega una capa más de validación para protegerte de accesos no autorizados y robo de fondos.</p>`,
+    `<p class="mock-p">Abre tu app de autenticación y escanea este código, luego ingresa el código de 6 dígitos que genera.</p>
+     <div class="qr-box"></div>
+     <div class="field" style="max-width:220px"><div class="box"></div></div>`,
+    `<div class="success-icon">✓</div>
+     <p class="mock-p" style="text-align:center">Tu cuenta ahora está protegida con autenticación de dos factores.</p>`
+  ];
+  const stepSpans = [6,6,6,6]; // every step here is Narrow content — genuinely uniform, so it centers
+  // flowRegionShell reserves space for the tallest step's own content and puts the CTA right
+  // after it — same spot on every step, without dragging it down to the bottom of the (now
+  // viewport-tall) column backdrop.
+  flowRegionShell(stepSpans, steps, "same flow container at every step");
+}
+
+/* ---- Wide examples ---- */
+function renderWideTableExample(){
+  const {gutter, trackWidth, columns} = current;
+  setPageTitle('Pagos');
+  const kpis = ['Flujo de caja neto','Total de depósitos','Total de retiros'].map(l=>
+    `<div class="mock-kpi" style="width:${nUpWidth(trackWidth,3)}px"><div class="l">${l}</div><div class="v">0.00</div></div>`).join('');
+  const inner = `<div class="zone-pad">
+      <div style="display:flex;gap:${gutter}px;margin-bottom:20px">${kpis}</div>
+      <div class="mock-card">
+        <h4><b class="tag-x" style="font-size:9.5px;padding:1px 6px;border-radius:4px">X — Wide</b> Historial de transacciones — single region, no composition, so it fills the whole page</h4>
+        <div class="mock-table-empty">Aún no hay actividad</div>
+      </div>
+    </div>`;
+  sceneShell(zoneWrap(trackWidth, bucketLabel('X','Wide', `${columns} / ${columns} — table + KPI row, single region`), inner, 'x', columns));
+}
+
+function renderWideDashboardExample(){
+  const {spec, columns, gutter} = current;
+  const stacked = spec.tier!=='Desktop';
+  const mainSpan = stacked ? columns : 8;
+  const mainW = stacked ? current.trackWidth : spanWidth(mainSpan);
+
+  const balanceBtns = ['Depositar','Comprar/Vender','Enviar'].map((l,i)=>
+    `<button class="mock-btn ${i===0?'on':''}" style="width:${nUpWidth(mainW,3)}px;margin:0">${l}</button>`).join('');
+  const kpis = ['Flujo de caja neto','Depósitos','Retiros'].map(l=>
+    `<div class="mock-kpi" style="width:${nUpWidth(mainW,3)}px"><div class="l">${l}</div><div class="v">0.00</div></div>`).join('');
+
+  // "Maria" is the real page title — setPageTitle puts it in the one shared header instead of
+  // nesting it inside main's own column, which is also what kept both zones' first card
+  // starting at the same y (a second heading only inside main would push it down further
+  // than aside, which has none).
+  setPageTitle('Maria');
+  const mainInner = `<div class="zone-pad">
+      <div class="mock-card">
+        <h4>Balance combinado</h4>
+        <div style="font-size:22px;font-weight:700;margin-bottom:12px">0.00 MXN</div>
+        <div style="display:flex;gap:${gutter}px">${balanceBtns}</div>
+      </div>
+      <div class="mock-card">
+        <h4><b class="tag-x" style="font-size:9.5px;padding:1px 6px;border-radius:4px">X — Wide</b> Resumen de pagos — KPI row, fills 100% of the main zone it's nested in</h4>
+        <div style="display:flex;gap:${gutter}px">${kpis}</div>
+      </div>
+      <div class="mock-card">
+        <h4><b class="tag-x" style="font-size:9.5px;padding:1px 6px;border-radius:4px">X — Wide</b> Historial de transacciones — table, fills 100% of this zone, not the page</h4>
+        <div class="mock-table-empty">Aún no hay actividad</div>
+      </div>
+    </div>`;
+  const asideInner = `<div class="zone-pad">
+      <div class="aside-panel">
+        <div class="icon">i</div>
+        <p>Continúe con el registro para comenzar depositando, enviando y convirtiendo crypto.</p>
+        <div class="cta">Continuar el registro</div>
+      </div>
+    </div>`;
+
+  if(stacked){
+    const full = current.trackWidth;
+    sceneShell(`${zoneWrap(full, `${columns} / ${columns} (apilado)`, mainInner, undefined, columns)}<div class="stack-gap"></div>${zoneWrap(full, `${columns} / ${columns} (apilado)`, asideInner, undefined, columns)}`);
+  } else {
+    const wAside = spanWidth(4);
+    sceneShell(`<div class="scene-row">${zoneWrap(mainW, '8 / 12 — main (composition zone)', mainInner, undefined, 8)}<div style="width:${gutter}px;flex-shrink:0"></div>${zoneWrap(wAside, '4 / 12 — aside (composition zone)', asideInner, undefined, 4)}</div>`);
+  }
+}
+
+// Table only — isolated, with real rows, so the "tables always fill their region" point
+// doesn't get muddied by KPI content sitting alongside it.
+function renderWideTableOnlyExample(){
+  const {trackWidth, columns} = current;
+  setPageTitle('Historial de transacciones');
+  const rows = [
+    ['31 ago 2026','Depósito','+ $12,500.00 MXN','<span class="status-pill ok">Completado</span>'],
+    ['30 ago 2026','Retiro','− $3,200.00 MXN','<span class="status-pill ok">Completado</span>'],
+    ['28 ago 2026','Conversión','$800.00 USD','<span class="status-pill pending">Pendiente</span>'],
+    ['25 ago 2026','Depósito','+ $50,000.00 MXN','<span class="status-pill ok">Completado</span>']
+  ];
+  const rowsHtml = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('');
+  const inner = `<div class="zone-pad">
+      <table class="data-table">
+        <thead><tr><th>Fecha</th><th>Tipo</th><th>Monto</th><th>Estado</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>
+    </div>`;
+  sceneShell(zoneWrap(trackWidth, bucketLabel('','Wide', `${columns} / ${columns} — just the table, no KPI row`), inner, 'x', columns));
+}
+
+/* ---- Narrow examples — two real content types, same span, centered, full grid always visible ---- */
+function renderNarrowOptionsDepositExample(){
+  setPageTitle('¿Qué quieres recibir?');
+  const inner = `
+      <h3 class="mock-h3">Desde cuentas bancarias o billeteras digitales</h3>
+      ${optRow('🇲🇽 Peso mexicano','Transferencia SPEI.', false)}
+      ${optRow('🇺🇸 Dólares digitales','Transferencia SWIFT o bancaria.', false)}
+      <div style="text-align:center;margin:4px 0 20px"><span style="color:var(--accent);font-size:12.5px;font-weight:700">Mostrar todas las divisas</span></div>
+      <h3 class="mock-h3">Desde apps y billeteras cripto</h3>
+      ${optRow('Cripto','Cualquier exchange o billetera.', false)}
+      <h3 class="mock-h3">Cualquier divisa con código QR</h3>
+      ${optRow('Bitso Transfer','Entre cuentas Bitso. Gratis e inmediato.', false)}`;
+  narrowRegionShell(inner);
+}
+
+function toggleRow(label, on){
+  return `<div class="toggle-row"><span class="label">${label}</span><div class="toggle ${on?'on':''}" onclick="this.classList.toggle('on')"></div></div>`;
+}
+function renderNarrowTogglesExample(){
+  setPageTitle('Notificaciones');
+  const inner = `
+      <p class="mock-p">Configura qué notificaciones deseas recibir por email.</p>
+      <div class="group-label-sm">Novedades, marketing y material educativo</div>
+      ${toggleRow('Correo electrónico', false)}
+      ${toggleRow('SMS', true)}
+      ${toggleRow('Notificaciones push', true)}
+      <div class="group-label-sm">Actividad de usuario</div>
+      ${toggleRow('Depósito pendiente', true)}
+      ${toggleRow('Fondos recibidos', false)}
+      ${toggleRow('Retiro completado', false)}
+      ${toggleRow('Orden ejecutada', true)}`;
+  narrowRegionShell(inner);
+}
+
+// Back — exactly one ancestor of depth. Real, validated case: Mis límites → Cuentas
+// personales. The path-subbar shows a plain "← Volver a Mis límites", not a breadcrumb,
+// because at depth 1 they'd do the same job — so the rule picks the simpler control.
+function renderNarrowBackExample(){
+  setPageTitle('Cuentas personales');
+  renderPathSubbar('Mis límites', ['Cuentas personales']);
+  const inner = `
+      <p class="mock-p">Límites de operación para tus cuentas personales en Bitso.</p>
+      ${optRow('Depósito diario','$50,000.00 MXN', false)}
+      ${optRow('Retiro diario','$50,000.00 MXN', false)}
+      ${optRow('Conversión mensual','$1,000,000.00 MXN', false)}`;
+  narrowRegionShell(inner);
+}
+
+// Breadcrumb — two or more ancestors of depth. Illustrative extension one level past the
+// validated Back case above, since a real 2-ancestor drill-down hasn't shipped yet: Mis
+// límites → Cuentas personales → Editar límite diario. Every crumb but the current one is
+// clickable in the real component (WDSHeader's breadcrumb slot); here they're just styled
+// to show the rule, not wired to actually navigate.
+function renderNarrowBreadcrumbExample(){
+  setPageTitle('Editar límite diario');
+  renderPathSubbar('Mis límites', ['Cuentas personales', 'Editar límite diario']);
+  const inner = `
+      <p class="mock-p">Ajusta el monto máximo que puedes depositar en un día.</p>
+      <div class="field" style="margin-bottom:16px;max-width:280px"><div class="box"></div></div>
+      ${optRow('Aplicar a todas mis cuentas', 'Activado', false)}`;
+  narrowRegionShell(inner);
+}
+
+// Drag-to-resize
+const handle = document.getElementById('resizeHandle');
+let dragging = false;
+handle.addEventListener('mousedown', e=>{ dragging=true; handle.classList.add('dragging'); e.preventDefault(); });
+window.addEventListener('mousemove', e=>{
+  if(!dragging) return;
+  const frameRect = document.getElementById('frame').getBoundingClientRect();
+  render(e.clientX - frameRect.left);
+});
+window.addEventListener('mouseup', ()=>{ dragging=false; handle.classList.remove('dragging'); });
+
+render(1440);
+</script>
+</body>
+</html>
