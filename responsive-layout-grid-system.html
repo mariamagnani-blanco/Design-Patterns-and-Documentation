@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bitso Business — Responsive Layout Grid System (Prototipo)</title>
+<title>Responsive Layout Grid System (Prototipo)</title>
 <style>
   :root{
     --accent:#5463FF; --accent-light:#DFE6FF; --ink:#1E1E1E; --muted:#6B7280; --border:#E5E7EB;
@@ -907,7 +907,7 @@ function renderNarrowOptionsDepositExample(){
       <h3 class="mock-h3">Desde apps y billeteras cripto</h3>
       ${optRow('Cripto','Cualquier exchange o billetera.', false)}
       <h3 class="mock-h3">Cualquier divisa con código QR</h3>
-      ${optRow('Bitso Transfer','Entre cuentas Bitso. Gratis e inmediato.', false)}`;
+      ${optRow('Transferencia interna','Entre cuentas. Gratis e inmediato.', false)}`;
   narrowRegionShell(inner);
 }
 
@@ -937,7 +937,7 @@ function renderNarrowBackExample(){
   setPageTitle('Cuentas personales');
   renderPathSubbar('Mis límites', ['Cuentas personales']);
   const inner = `
-      <p class="mock-p">Límites de operación para tus cuentas personales en Bitso.</p>
+      <p class="mock-p">Límites de operación para tus cuentas personales.</p>
       ${optRow('Depósito diario','$50,000.00 MXN', false)}
       ${optRow('Retiro diario','$50,000.00 MXN', false)}
       ${optRow('Conversión mensual','$1,000,000.00 MXN', false)}`;
