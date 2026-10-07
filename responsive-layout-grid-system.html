@@ -232,8 +232,8 @@
   <h1>Responsive Layout Grid System — grid overlay</h1>
   <div class="presets">
     <button class="preset-btn" data-w="1440" onclick="setWidth(1440,this)">Desktop (1440)</button>
-    <button class="preset-btn" data-w="900" onclick="setWidth(900,this)">Tablet (900)</button>
-    <button class="preset-btn" data-w="375" onclick="setWidth(375,this)">Mobile (375)</button>
+    <button class="preset-btn" data-w="1280" onclick="setWidth(1280,this)">Tablet (1280)</button>
+    <button class="preset-btn" data-w="360" onclick="setWidth(360,this)">Mobile (360)</button>
   </div>
   <div class="readout" id="readout"></div>
 </div>
@@ -294,7 +294,7 @@
 <p class="note">Drag the handle on the right edge of the frame, or use the preset buttons. Watch the column count, gutter, and margin flip at <code>768px</code> and <code>1280px</code> — the same breakpoints the Navigation Pattern System uses for when the sidebar collapses to a drawer. Sidebar and topbar are dimmed and inert: reference chrome only, not part of what's being tested here.</p>
 
 <script>
-const MIN_W = 375, MAX_W = 1600;
+const MIN_W = 360, MAX_W = 1600;
 let scene = 'grid';
 let current = {};
 
@@ -306,7 +306,7 @@ let current = {};
 const FRAME_HEIGHT = {Desktop:900, Tablet:760, Mobile:700};
 
 function getSpec(width){
-  if(width>=1280) return {tier:'Desktop', columns:12, gutter:24, margin:48, cap:1440};
+  if(width>1280) return {tier:'Desktop', columns:12, gutter:24, margin:48, cap:1440};
   if(width>=768) return {tier:'Tablet', columns:8, gutter:16, margin:24, cap:null};
   return {tier:'Mobile', columns:4, gutter:16, margin:16, cap:null};
 }

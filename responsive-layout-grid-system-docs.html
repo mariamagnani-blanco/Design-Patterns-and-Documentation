@@ -116,13 +116,13 @@
 
     <section id="breakpoints">
       <h2>Breakpoints</h2>
-      <p class="lede">Three tiers, each with its own column count, gutter, and margin. Mobile's 375px is a hard floor — the smallest device this system supports — not just a convenient round number.</p>
+      <p class="lede">Three tiers, each with its own column count, gutter, and margin. Mobile's 360px is a hard floor — the smallest device this system supports — not just a convenient round number.</p>
       <table>
         <thead><tr><th>Tier</th><th>Viewport width</th><th>Columns</th><th>Gutter</th><th>Margin</th><th>Cap</th></tr></thead>
         <tbody>
-          <tr><td class="tier-desktop">Desktop</td><td>≥ 1280px</td><td>12</td><td>24px</td><td>48px</td><td>1440px — extra width becomes margin, not wider columns</td></tr>
-          <tr><td class="tier-tablet">Tablet</td><td>768–1279px</td><td>8</td><td>16px</td><td>24px</td><td>none</td></tr>
-          <tr><td class="tier-mobile">Mobile</td><td>375–767px</td><td>4</td><td>16px</td><td>16px</td><td>none — 375px is the explicit design floor</td></tr>
+          <tr><td class="tier-desktop">Desktop</td><td>&gt; 1280px</td><td>12</td><td>24px</td><td>48px</td><td>1440px — extra width becomes margin, not wider columns</td></tr>
+          <tr><td class="tier-tablet">Tablet</td><td>768–1280px</td><td>8</td><td>16px</td><td>24px</td><td>none</td></tr>
+          <tr><td class="tier-mobile">Mobile</td><td>360–767px</td><td>4</td><td>16px</td><td>16px</td><td>none — 360px is the explicit design floor</td></tr>
         </tbody>
       </table>
       <div class="rule-why"><b>Why cap Desktop at 1440px:</b> without a cap, columns keep stretching on ultrawide monitors until content looks sparse and line lengths get unreadable. Capping the content track and pushing the extra width into margin keeps column proportions constant regardless of how wide the browser window gets.</div>
