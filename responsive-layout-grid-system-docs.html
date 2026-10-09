@@ -146,14 +146,13 @@
       <p><b>Examples:</b> Pagos (table + KPI row), Home's transaction table nested inside the main zone of a main+secondary composition.</p>
 
       <h3 id="narrow"><span class="tag y">Narrow</span> A fixed 6 columns, full only on Mobile</h3>
-      <p>Forms, prose, option-row lists, toggle lists. Centered in its region, not pinned to the left margin.</p>
+      <p>Forms, prose, option-row lists, toggle lists. Left-aligned in its region, pinned to the left margin — same edge as Wide.</p>
       <div class="rule-why"><b>Careful — this isn't literally "half":</b> the rule is a <b>fixed span of 6 columns</b>, not "50% of the region." At Desktop (12 columns) that <em>is</em> half. At Tablet (8 columns) 6 columns is 75% of the region, not half. Mobile has only 4 columns total, so there's no room to constrain — Narrow content there just takes the full width. Document the exact rule, not the Desktop-only approximation.</div>
       <div class="diagram">
-        <div class="cap">Narrow at Desktop — 6 / 12, centered</div>
+        <div class="cap">Narrow at Desktop — 6 / 12, left-aligned</div>
         <div class="cols">
-          <div class="col"></div><div class="col"></div><div class="col"></div>
           <div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div><div class="col used"></div>
-          <div class="col"></div><div class="col"></div><div class="col"></div>
+          <div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div><div class="col"></div>
         </div>
       </div>
       <p><b>Examples:</b> deposit method picker, notification toggle list.</p>
@@ -204,9 +203,9 @@
       <h2>Flow-specific rules</h2>
       <h3>Flow Consistency Rule</h3>
       <p>A Full-Page Flow's outer container picks <b>one column-span for its entire duration</b> — whichever step needs the most — computed once for all steps, not recalculated per step.</p>
-      <h3>Alignment fallback</h3>
-      <p>When every step's content genuinely fits that one shared span (the common case — e.g. a flow made entirely of Narrow steps), the container <b>centers</b>, same as a standalone Narrow card. When steps can't be unified under one span without forcing some steps into an ill-fitting width (a flow mixing Wide- and Narrow-sized steps, say), the container <b>left-aligns</b> instead, anchored to the page margin.</p>
-      <div class="rule-why"><b>Why left-align, not center, for the non-uniform case:</b> if the effective width genuinely differs step to step, a centered container's left edge would shift left and right as you move through the flow. Anchoring to the left margin keeps one edge stable even when the width itself has to vary.</div>
+      <h3>Alignment</h3>
+      <p>The container is <b>left-aligned</b>, anchored to the page margin — same as a standalone Narrow card, and the same regardless of whether every step shares one span (a flow made entirely of Narrow steps) or steps mix Wide- and Narrow-sized content under one unified span.</p>
+      <div class="rule-why"><b>Why left-align, never center:</b> if the effective width genuinely differs step to step, a centered container's left edge would shift left and right as you move through the flow. Anchoring to the left margin keeps one edge stable no matter how the width varies — the same reason Narrow itself is left-aligned rather than centered.</div>
     </section>
 
     <section id="titles">
@@ -218,7 +217,7 @@
       <p>On a composed page like main + secondary, a page title/greeting (e.g. "Maria" on Home) is real content for the <em>whole page</em>, not specifically main's content.</p>
       <div class="rule-why"><b>Why:</b> nesting the heading inside main's own zone pushed its content down while secondary's had nothing above it, so the two zones didn't start at the same height. Rendering it once, above the composition, keeps both zones' content starting at the same height.</div>
       <h3>Title aligns to the content's own column position</h3>
-      <p>The title's left edge matches wherever the content below it actually starts — flush at the page margin for Wide content (which starts at the margin anyway), but shifted in to match a centered Narrow card's left edge.</p>
+      <p>The title's left edge matches wherever the content below it actually starts. For a standalone Wide or Narrow zone that's the same place — both are left-aligned to the page margin now, so the title sits flush there either way. Inside a composition, where a zone (e.g. secondary) starts further in than the page margin, the title shifts in to match that zone's own left edge instead.</p>
       <h3>The title never jumps vertically</h3>
       <p>The title sits at the same Y position whether or not the back-label/breadcrumb line above it (see below) has anything in it. The slot above the title is always reserved at a fixed height — hiding the back-label clears its text, not the box it sits in — so switching between an example that has one and one that doesn't never shifts the title up or down.</p>
     </section>
@@ -240,7 +239,7 @@
 
       <h3>Where it sits</h3>
       <p>A new <code>#pathSubbar</code> element, inside <code>.content-area</code>, above the page title (<code>#pageHeader</code>) — separate from the title, not merged into it. Unlike the title, it does <em>not</em> follow the content's column position: it stays flush at the page's fixed margin always, the same horizontal spot regardless of what's below it. The title is content-relative; this is a navigation control, so it's page-relative instead — the two follow different rules on purpose.</p>
-      <div class="rule-why"><b>Why fixed to the margin, not the content:</b> a back-label or breadcrumb is a wayfinding control — it should be exactly where you expect it every time, not hopping horizontally depending on which example happens to be centered that day. The title earns its content-following behavior because it's labeling that specific piece of content; the back-label isn't labeling the content, it's telling you how to leave it.</div>
+      <div class="rule-why"><b>Why fixed to the margin, not the content:</b> a back-label or breadcrumb is a wayfinding control — it should be exactly where you expect it every time, not hopping horizontally depending on where that day's example happens to start. The title earns its content-following behavior because it's labeling that specific piece of content; the back-label isn't labeling the content, it's telling you how to leave it.</div>
       <div class="rule-why"><b>Spacing is deliberately asymmetric:</b> a bigger gap above the back-label/breadcrumb than below the title. The back-label and the title are two different pieces of information — how you got here vs. where you are — so they need visible separation from each other. But the title and its own body copy are one unit and should read that way, tight together, not as two disconnected blocks.</div>
       <div class="rule-why"><b>This should be tokens, not ad hoc numbers:</b> there are really two different kinds of spacing at play here, and they should be named separately once real values exist. One outer token sets the vertical padding of the content column as a whole — how far the whole nav/title/content block sits below the app's topbar. Separately, two inner spacing tokens govern the relationships <em>within</em> that block: the gap between the back-label/breadcrumb and the title, and the gap between the title and where the real content starts. Same three-slot structure everywhere — a section-level padding token, plus spacing tokens for what comes right after it — not one-off values invented per element. Exact values aren't set yet; this is the shape the token set should take once they are.</div>
       <div class="rule-why"><b>Mutually exclusive, never both:</b> a screen shows a back-label, a breadcrumb, or nothing in that slot — never two at once. The prototype's two new "Drill-down" examples under Narrow demonstrate this: the same slot, same position, different content depending on depth.</div>

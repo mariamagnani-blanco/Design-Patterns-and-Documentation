@@ -250,8 +250,8 @@
 
 <div class="legend">
   <span><b class="tag-x">Wide</b> fills 100% of its region (tables, KPI/card grids)</span>
-  <span><b class="tag-y">Narrow</b> ~half its region, full only on Mobile (forms, text, option-row lists, toggle lists)</span>
-  <span><b class="tag-z">Flow</b> a Full-Page Flow locks one region-width for every step, chosen by whichever step needs the most — centered when every step actually fits that width, left-aligned when they can't be unified (so the container doesn't jump side to side)</span>
+  <span><b class="tag-y">Narrow</b> ~half its region, left-aligned, full only on Mobile (forms, text, option-row lists, toggle lists)</span>
+  <span><b class="tag-z">Flow</b> a Full-Page Flow locks one region-width for every step, chosen by whichever step needs the most — left-aligned, same as Narrow, so a flow mixing Wide- and Narrow-sized steps never jumps side to side</span>
   <span style="color:var(--muted)">Compositions (Split-intro, Main+Aside) assign zone widths above this — X/Y then applies <i>inside</i> each zone, recursively.</span>
 </div>
 
@@ -335,8 +335,8 @@ function nUpWidth(containerWidth, n){ return (containerWidth - (n-1)*current.gut
 // as "behind" because the real content stacked on top (.zone-pad) has no opaque fill — see the
 // .mock-card/.mock-kpi/.opt-row/.zone rules, which deliberately have borders but no background.
 // usedFrom/usedTo mark which columns the content actually occupies (Wide always uses all of
-// them, since Wide fills 100% of its zone; Narrow only uses some, centered, and the rest stay
-// visible on either side).
+// them, since Wide fills 100% of its zone; Narrow only uses some, left-aligned, and the rest
+// stay visible on the right).
 function columnBackdrop(n, usedFrom, usedTo){
   const {colWidth, gutter} = current;
   let bars = '';
@@ -475,10 +475,11 @@ function renderScene(){
 }
 
 // The title should start exactly where the content below it starts — not always at the page
-// margin. That's true for Wide (it fills the page, so its left edge IS the margin) but not for
-// a centered Narrow card, which starts further in. Measuring the actual rendered content's
-// left edge and matching the title to it works for both, and for Flow's left-aligned fallback
-// too, without hardcoding per-scene offsets that would drift out of sync with the real layout.
+// margin. That's true for Wide and Narrow alike now that both are left-aligned to their
+// region, but not for a zone nested inside a composition (Main+Secondary), which starts
+// further in. Measuring the actual rendered content's left edge and matching the title to it
+// works for every case, without hardcoding per-scene offsets that would drift out of sync
+// with the real layout.
 // Only the title follows the content's column position — the back-label/breadcrumb bar is a
 // fixed navigation control and stays flush at the page margin (its plain CSS padding) no
 // matter where the content below happens to sit. See .path-subbar for that.
@@ -658,7 +659,8 @@ function renderGridScene(){
 // of what's actually inside (form, prose, option list, toggle list) — that convergence is
 // the whole point. The full track's guides are always drawn as a backdrop behind the zone,
 // so unused columns stay visible instead of disappearing when content doesn't need them —
-// and the zone is centered in that backdrop, not pinned to the left margin.
+// and the zone is left-aligned in that backdrop, pinned to the start of its region, so it
+// shares the same left edge as Wide content instead of floating in the middle.
 function narrowRegionSpan(note){
   const {spec, columns} = current;
   const w = spec.tier==='Mobile' ? current.trackWidth : spanWidth(6);
@@ -671,7 +673,7 @@ function narrowRegionShell(innerHtml, note){
   const {trackWidth, columns} = current;
   const {w, label} = narrowRegionSpan(note);
   const usedSpan = columns===4 ? 4 : 6; // Mobile has no room to constrain, so all 4 are "used"
-  const usedStartCol = Math.floor((columns - usedSpan)/2) + 1; // centered, matches the layout below
+  const usedStartCol = 1; // left-aligned, matches the layout below
   const backdrop = columnBackdrop(columns, usedStartCol, usedStartCol+usedSpan-1);
   // No background on .zone — the content sits directly on the backdrop, so the columns it
   // occupies stay visible (tinted) behind it, same as the unused columns on either side.
@@ -679,7 +681,7 @@ function narrowRegionShell(innerHtml, note){
       <span class="span-chip y">${label}</span>
       <div class="zone-pad">${innerHtml}</div>
     </div>`;
-  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:center;position:relative;z-index:1">${zoneHtml}</div></div>`);
+  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:flex-start;position:relative;z-index:1">${zoneHtml}</div></div>`);
 }
 
 /* ---- Flow — the modifier, demonstrated with Habilitar 2FA. Stepper chrome matches the
@@ -687,11 +689,9 @@ function narrowRegionShell(innerHtml, note){
    inline in content), with a flow-specific top bar (title + X) replacing the app's own. ---- */
 
 // Flow Consistency Rule: the outer container picks ONE column-span for the whole flow —
-// whichever step needs the most — same as Narrow's fixed span. When every step's content
-// genuinely fits that one span (stepSpans all equal), center it, matching Narrow. When it
-// can't be unified (a flow mixing Wide- and Narrow-sized steps, say), centering would shift
-// the container left/right as its effective width changes step to step — so it left-aligns
-// instead, anchored to the page margin, so nothing jumps as you move between steps.
+// whichever step needs the most — same as Narrow's fixed span. Left-aligned always, same
+// as Narrow, so a flow mixing Wide- and Narrow-sized steps never jumps left/right as its
+// effective width changes step to step — every step's content starts at the same edge.
 // Renders an off-screen copy of each step's body at the real content width and returns the
 // tallest one. Reserving that much space for the content — instead of letting the CTA row
 // follow immediately after whatever a given step happens to need — is what keeps the CTA at
@@ -708,7 +708,6 @@ function measureMaxHtmlHeight(htmlArr, widthPx){
 }
 function flowRegionShell(stepSpans, stepBodies, note){
   const {trackWidth, columns, spec} = current;
-  const uniform = stepSpans.every(s => s === stepSpans[0]);
   const maxSpan = Math.min(Math.max(...stepSpans), columns);
   const full = spec.tier==='Mobile' || maxSpan>=columns; // Mobile has no room to constrain either
   const usedSpan = full ? columns : maxSpan;
@@ -716,7 +715,7 @@ function flowRegionShell(stepSpans, stepBodies, note){
   const label = full
     ? bucketLabel('','Flow', `${columns} / ${columns}${note ? ' — '+note : ''}`)
     : bucketLabel('','Flow', `${usedSpan} / ${columns}${note ? ' — '+note : ''}`);
-  const usedStartCol = uniform ? Math.floor((columns - usedSpan)/2) + 1 : 1;
+  const usedStartCol = 1;
   const backdrop = columnBackdrop(columns, usedStartCol, usedStartCol+usedSpan-1);
   const maxContentH = measureMaxHtmlHeight(stepBodies, w);
   const innerHtml = `<div style="min-height:${maxContentH}px">${stepBodies[flowStep]}</div>${flowNavButtons(stepBodies.length)}`;
@@ -724,8 +723,7 @@ function flowRegionShell(stepSpans, stepBodies, note){
       <span class="span-chip y">${label}</span>
       <div class="zone-pad">${innerHtml}</div>
     </div>`;
-  const align = uniform ? 'center' : 'flex-start';
-  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:${align};position:relative;z-index:1">${zoneHtml}</div></div>`);
+  sceneShell(`<div class="backdrop-row" style="width:${trackWidth}px;position:relative">${backdrop}<div style="display:flex;justify-content:flex-start;position:relative;z-index:1">${zoneHtml}</div></div>`);
 }
 function renderFlowStepperSidebar(stepNames, currentIndex){
   const items = stepNames.map((name,i)=>{
@@ -804,7 +802,7 @@ function renderFlow2faExample(){
     `<div class="success-icon">✓</div>
      <p class="mock-p" style="text-align:center">Tu cuenta ahora está protegida con autenticación de dos factores.</p>`
   ];
-  const stepSpans = [6,6,6,6]; // every step here is Narrow content — genuinely uniform, so it centers
+  const stepSpans = [6,6,6,6]; // every step here is Narrow content — same span the whole way through
   // flowRegionShell reserves space for the tallest step's own content and puts the CTA right
   // after it — same spot on every step, without dragging it down to the bottom of the (now
   // viewport-tall) column backdrop.
@@ -896,7 +894,7 @@ function renderWideTableOnlyExample(){
   sceneShell(zoneWrap(trackWidth, bucketLabel('','Wide', `${columns} / ${columns} — just the table, no KPI row`), inner, 'x', columns));
 }
 
-/* ---- Narrow examples — two real content types, same span, centered, full grid always visible ---- */
+/* ---- Narrow examples — two real content types, same span, left-aligned, full grid always visible ---- */
 function renderNarrowOptionsDepositExample(){
   setPageTitle('¿Qué quieres recibir?');
   const inner = `
